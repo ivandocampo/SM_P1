@@ -1,0 +1,47 @@
+COMPORTAMIENTO Y ROLES
+=========================================================
+
+1. FRODO
+---------------------------------------------------------
+
+- Caminar (Sigilo): Se mueve despacio. En este estado, es difícil de detectar; 
+  los enemigos deben estar muy cerca para verlo.
+- Correr (Riesgo): Al pulsar Shift, Frodo se mueve mucho más rápido, pero genera 
+  "ruido". Esto hace que los orcos se giren y lo detecten desde mucha más distancia.
+- Usar el Anillo Único: Una vez recogido el objetivo, Frodo puede ponérselo.
+  - Ventaja: Se vuelve invisible a los ojos de los orcos (pueden tenerlo delante y no verlo).
+  - Desventaja (Corrupción): Al usarlo, emite una señal mágica muy fuerte. Los enemigos 
+    pueden sentir su presencia a través de las paredes y desde muy lejos, corriendo 
+    hacia él como si tuvieran un radar.
+
+Objetivo:
+Entrar en el laberinto, encontrar el Anillo y llegar a la zona de salida sin ser capturado.
+
+2. ORCO
+---------------------------------------------------------
+
+- Estado de Patrulla (Calma):
+  El orco recorre una ruta de puntos preestablecida de forma cíclica. Camina tranquilo 
+  mientras no note nada extraño.
+
+- Reacción Visual:
+  Si Frodo entra en su campo de visión y no hay muros en medio, el orco entra en 
+  estado de alerta y corre hacia él para atraparlo.
+
+- Reacción Auditiva:
+  Si Frodo corre cerca (aunque el orco esté de espaldas), el guardia escuchará los 
+  pasos y comenzará la persecución inmediatamente.
+
+- Reacción Sobrenatural:
+  Si Frodo se pone el Anillo, el orco ignora muros y obstáculos. Siente la atracción 
+  del anillo y corre directo hacia la posición del jugador, aunque esté escondido.
+
+- Inteligencia y Memoria (Investigación):
+  Si el orco estaba persiguiendo a Frodo y este logra esconderse detrás de una esquina:
+  1. El orco no se da la vuelta al instante.
+  2. Corre hasta el último lugar donde vio a Frodo.
+  3. Se detiene y mira a su alrededor durante unos segundos (Buscando).
+  4. Si no lo encuentra tras ese tiempo, se encoge de hombros y vuelve a su ruta de patrulla.
+
+Condición de Derrota:
+Si el orco logra tocar a Frodo, la misión fracasa y el escenario se reinicia.
