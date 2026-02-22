@@ -8,10 +8,11 @@ public class SensorTactoFrodo : MonoBehaviour
 
     public bool TocarAnillo()
     {
-        // El sentido del tacto comprueba si el objeto está al alcance de la mano
         if (elAnillo != null && elAnillo.gameObject.activeSelf)
         {
-            return Vector3.Distance(transform.position, elAnillo.position) < 1.5f;
+            float dist = Vector3.Distance(transform.position, elAnillo.position);
+            Debug.Log("Distancia al anillo: " + dist);
+            return dist < 1.5f;
         }
         return false;
     }

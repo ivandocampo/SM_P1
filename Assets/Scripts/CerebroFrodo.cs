@@ -3,41 +3,39 @@ using UnityEngine.AI;
 
 public class CerebroFrodo : MonoBehaviour
 {
-
-    [Header("Objetivos de la Misión")]
-    public Transform elAnillo;   // Referencia al objeto que Frodo debe robar
-    public Transform laSalida;   // Referencia al punto de escape
-    
     [Header("Configuración de Movimiento")]
     public float velocidadCaminar = 5f; // Velocidad estándar sigilosa
     public float velocidadCorrer = 10f; // Velocidad rápida (genera ruido)
 
     [Header("Estado (Información para los Orcos)")]
     public bool estaCorriendo = false; // Indica a los enemigos si Frodo está haciendo ruido
-    public bool usandoAnillo = false;  // Indica a los enemigos si Frodo es invisible pero detectable
+    public bool usandoAnillo = false;  // Indica a los enemigos si Frodo emite olor
 
     private NavMeshAgent agent;         // Componente que gestiona el movimiento físico
+    private SensorTactoFrodo sensorTacto; // Sentido para interactuar con objetos
     private bool tieneElAnillo = false; // Memoria interna: Frodo ya tiene el objetivo?
     private bool haEscapado = false;    // Estado final: Frodo ha ganado?
 
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
+        sensorTacto = GetComponent<SensorTactoFrodo>();
         agent.updateRotation = true; 
     }
 
     void Update()
     {
+        Debug.Log("CerebroFrodo Update ejecutándose");
         // Si Frodo ya ha escapado, el cerebro deja de procesar decisiones
         if (haEscapado) return;
 
         // Frodo procesa el teclado y se mueve
         MoverJugador();       
         
-        // Frodo decide si usa el Anillo Único
+        // Frodo decide si usa el Anillo
         GestionarAnillo();    
         
-        // Frodo comprueba su entorno (distancia a objetivos)
+        // Frodo analiza la información de sus sentidos físicos
         ComprobarObjetivos(); 
     }
 
@@ -71,13 +69,12 @@ public class CerebroFrodo : MonoBehaviour
     {
         if (tieneElAnillo && Input.GetKeyDown(KeyCode.Space))
         {
-            // Alternar el estado del anillo (Invisible vs Visible)
+            // Alternar el estado del anillo
             usandoAnillo = !usandoAnillo; 
 
             if (usandoAnillo)
             {
-                Debug.Log("Anillo activado.");
-                // Aquí se podría añadir lógica visual (hacer transparente a Frodo)
+                Debug.Log("Anillo activado. Frodo es invisible a la vista, pero emite olor.");
             }
             else
             {
@@ -88,14 +85,14 @@ public class CerebroFrodo : MonoBehaviour
 
     void ComprobarObjetivos()
     {
-        // Distancia al Anillo
-        if (!tieneElAnillo && elAnillo != null && Vector3.Distance(transform.position, elAnillo.position) < 1.5f)
+        // El cerebro pregunta al tacto si está tocando el anillo
+        if (!tieneElAnillo && sensorTacto != null && sensorTacto.TocarAnillo())
         {
             RecogerAnillo();
         }
 
-        // Distancia a la Salida (si ya tiene el Anillo)
-        if (tieneElAnillo && Vector3.Distance(transform.position, laSalida.position) < 2.0f)
+        // El cerebro pregunta al tacto si está pisando la salida
+        if (tieneElAnillo && sensorTacto != null && sensorTacto.TocarSalida())
         {
             Victoria();
         }
@@ -106,8 +103,8 @@ public class CerebroFrodo : MonoBehaviour
         tieneElAnillo = true;           
         Debug.Log("Anillo recogido. (Pulsa ESPACIO para usarlo)"); 
         
-        // Desaparecer el anillo del mundo físico
-        if(elAnillo != null) elAnillo.gameObject.SetActive(false); 
+        // El cerebro ordena usar el tacto para agarrar el objeto
+        if (sensorTacto != null) sensorTacto.CogerAnillo(); 
     }
 
     void Victoria()
