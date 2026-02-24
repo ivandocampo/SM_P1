@@ -5,11 +5,11 @@ using UnityEngine.SceneManagement;
 public class CerebroOrco : MonoBehaviour
 {
     [Header("Configuración de Patrulla")]
-    public Transform[] puntosPatrulla;      // Lista de puntos iniciales
+    public Transform[] puntosPatrulla;      
     public float velocidadPatrulla = 3.5f;  
     public float velocidadAlerta = 6.0f;    
     public float tiempoDeEsperaAlInvestigar = 3.0f; 
-    public float radioPatrullaLocal = 10f;  // Distancia máxima a la que dará vueltas en la zona caliente
+    public float radioPatrullaLocal = 10f;  
 
     [Header("Configuración de Ataque")]
     public Transform objetivoFrodo;         
@@ -19,12 +19,10 @@ public class CerebroOrco : MonoBehaviour
     private NavMeshAgent agent;             
     private int indiceDestino = 0;          
 
-    // Órganos Sensoriales
     private SensorVistaOrco sensorVista;
     private SensorOidoOrco sensorOido;
     private SensorOlfatoOrco sensorOlfato;
 
-    // Estados de la IA
     private bool viendoAFrodo = false;      
     private bool investigando = false;      
     private bool estaAgresivo = false;      
@@ -35,51 +33,70 @@ public class CerebroOrco : MonoBehaviour
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
-        
         sensorVista = GetComponent<SensorVistaOrco>();
         sensorOido = GetComponent<SensorOidoOrco>();
         sensorOlfato = GetComponent<SensorOlfatoOrco>();
-
         IrAlSiguientePunto();
     }
 
     void Update()
     {
-        // El orco comprueba si, con sus ojos, se da cuenta de que falta el anillo
+        // 0. CAPA ABSOLUTA: El tacto. Si choco con él físicamente, lo atrapo siempre.
+        if (objetivoFrodo != null && Vector3.Distance(transform.position, objetivoFrodo.position) < distanciaAtaque)
+        {
+            Debug.Log("Frodo capturado por contacto físico.");
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            return; // Cortamos el código aquí, ya te han matado
+        }
+
         if (!estaAgresivo && sensorVista != null && sensorVista.NoAnillo())
         {
             estaAgresivo = true;
             Debug.Log("El orco ha visto que falta el anillo. Aumenta su agresividad.");
         }
 
-        Vector3 origenDelRuido;
+        Vector3 origenDelRuido = Vector3.zero;
 
-        // Sentidos precisos (Olor fuerte o Visión directa)
-        if ((sensorOlfato != null && sensorOlfato.OlerFrodo()) || 
-            (sensorVista != null && sensorVista.VerFrodo()))
-        {
-            patrullandoZonaLocal = false; // Si te encuentra, deja la patrulla local y ataca
-            Perseguir();
-        }
-        // Sentido zonal (Oído capta ruido)
-        else if (sensorOido != null && sensorOido.OirFrodo(out origenDelRuido))
+        // 1. Sentido mortal (Visión directa) -> Perseguir a muerte
+        if (sensorVista != null && sensorVista.VerFrodo())
         {
             patrullandoZonaLocal = false; 
-            ultimaPosicionConocida = origenDelRuido;
+            Perseguir();
+        }
+        // 2. Sentidos de rastreo (Oler el anillo u Oir pasos) -> Ir a investigar
+        else if ((sensorOlfato != null && sensorOlfato.OlerFrodo()) || 
+                 (sensorOido != null && sensorOido.OirFrodo(out origenDelRuido)))
+        {
+            patrullandoZonaLocal = false; 
+            
+            if (sensorOlfato != null && sensorOlfato.OlerFrodo()) 
+            {
+                 // ARREGLO DEL IMÁN: Solo guarda tu posición si acaba de empezar a olerte.
+                 // Si ya estaba yendo hacia un olor, no actualiza hasta que llegue allí.
+                 if (!investigando) 
+                 {
+                     ultimaPosicionConocida = objetivoFrodo.position;
+                 }
+            } 
+            else 
+            {
+                 ultimaPosicionConocida = origenDelRuido;
+            }
+
             investigando = true;
             Investigar();
         }
-        // Ir al último punto conocido a mirar
+        // 3. Ir al último punto conocido a mirar
         else if (investigando)
         {
             Investigar();
         }
-        // Quedarse patrullando la zona caliente
+        // 4. Quedarse patrullando la zona caliente
         else if (patrullandoZonaLocal)
         {
             PatrullarLocalmente();
         }
-        // Rutina inicial (Patrulla de puntos predefinidos)
+        // 5. Rutina inicial (Patrulla)
         else
         {
             Patrullar();
@@ -89,20 +106,14 @@ public class CerebroOrco : MonoBehaviour
     void Perseguir()
     {
         viendoAFrodo = true; 
-        investigando = true; // Activa su memoria para cuando pierda el rastro
-        
+        investigando = true; 
         agent.speed = velocidadPersecucion; 
         
         if(objetivoFrodo != null)
         {
             agent.destination = objetivoFrodo.position; 
             ultimaPosicionConocida = objetivoFrodo.position; 
-
-            if (Vector3.Distance(transform.position, objetivoFrodo.position) < distanciaAtaque)
-            {
-                Debug.Log("Frodo capturado.");
-                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-            }
+            // La muerte ya no está aquí, está arriba del todo en el Update
         }
     }
 
@@ -119,13 +130,12 @@ public class CerebroOrco : MonoBehaviour
 
             if (temporizadorBusqueda > tiempoDeEsperaAlInvestigar)
             {
-                // En lugar de rendirse, ahora se queda patrullando esta zona
                 investigando = false; 
                 patrullandoZonaLocal = true; 
                 agent.isStopped = false;
                 temporizadorBusqueda = 0f;
-                Debug.Log("El orco perdió el rastro visual, pero se queda vigilando la zona.");
-                AsignarPuntoLocal(); // Le damos su primer destino aleatorio en la zona
+                Debug.Log("El orco perdió el rastro, pero se queda vigilando la zona.");
+                AsignarPuntoLocal(); 
             }
         }
         else
@@ -138,10 +148,8 @@ public class CerebroOrco : MonoBehaviour
     {
         viendoAFrodo = false;
         agent.speed = estaAgresivo ? velocidadAlerta : velocidadPatrulla; 
-        
         if(agent.isStopped) agent.isStopped = false;
 
-        // Si llega a su destino aleatorio, busca otro nuevo
         if (!agent.pathPending && agent.remainingDistance < 0.5f)
         {
             AsignarPuntoLocal();
@@ -150,12 +158,9 @@ public class CerebroOrco : MonoBehaviour
 
     void AsignarPuntoLocal()
     {
-        // Calcula un punto al azar en una esfera de X metros alrededor del punto caliente
         Vector3 direccionAleatoria = Random.insideUnitSphere * radioPatrullaLocal;
         direccionAleatoria += ultimaPosicionConocida;
-        
         NavMeshHit hit;
-        // Se asegura de que ese punto aleatorio caiga dentro del suelo transitable (NavMesh)
         if (NavMesh.SamplePosition(direccionAleatoria, out hit, radioPatrullaLocal, NavMesh.AllAreas))
         {
             agent.destination = hit.position;
@@ -166,7 +171,6 @@ public class CerebroOrco : MonoBehaviour
     {
         viendoAFrodo = false;
         agent.speed = estaAgresivo ? velocidadAlerta : velocidadPatrulla; 
-        
         if(agent.isStopped) agent.isStopped = false;
 
         if (!agent.pathPending && agent.remainingDistance < 0.5f)
