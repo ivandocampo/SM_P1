@@ -29,10 +29,25 @@ public class CerebroOrco : MonoBehaviour
     private SensorOidoOrco sensorOido;
     private SensorOlfatoOrco sensorOlfato;
 
-    private bool investigando = false;      
-    private bool estaAgresivo = false;      
-    private bool patrullandoZonaLocal = false;
-    private bool yendoAComprobarAnillo = false; // Estado de ir a hacer la ronda
+    // private bool investigando = false;      
+    // private bool estaAgresivo = false;      
+    // private bool patrullandoZonaLocal = false;
+    // private bool yendoAComprobarAnillo = false; // Estado de ir a hacer la ronda
+
+    // Estados posibles del orco
+    public enum EstadoOrco 
+    { 
+        PATRULLA, 
+        PERSECUCION, 
+        INVESTIGACION, 
+        COMPROBAR_ANILLO, 
+        BLOQUEAR_SALIDA 
+    }
+
+    private EstadoOrco estadoActual = EstadoOrco.PATRULLA; // Estado inicial
+
+
+
     private float temporizadorBusqueda = 0f;
     private float temporizadorVigilancia; // El reloj interno de cada orco
     private Vector3 ultimaPosicionConocida; 
@@ -43,164 +58,157 @@ public class CerebroOrco : MonoBehaviour
         sensorVista = GetComponent<SensorVistaOrco>();
         sensorOido = GetComponent<SensorOidoOrco>();
         sensorOlfato = GetComponent<SensorOlfatoOrco>();
+
+        // Estado inicial: Patrullando
+        estadoActual = EstadoOrco.PATRULLA;
         
-        // Cada orco tira los dados para ver cuándo le toca hacer la primera ronda
-        temporizadorVigilancia = Random.Range(tiempoMinVigilancia, tiempoMaxVigilancia);
-        
+        // Arrancar el movimiento hacia el primer punto
         IrAlSiguientePunto();
     }
 
     void Update()
     {
-        // 0. CAPA ABSOLUTA: El tacto.
+        // 0. CAPA FÍSICA (Game Over)
+        // Mantenemos lógica original: si está muy cerca, te atrapa.
         if (objetivoFrodo != null && Vector3.Distance(transform.position, objetivoFrodo.position) < distanciaAtaque)
         {
-            Debug.Log("Frodo capturado por contacto físico.");
+            Debug.Log("Frodo capturado.");
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
             return; 
         }
 
-        // Reloj interno de vigilancia del anillo
-        if (!estaAgresivo && !investigando && !yendoAComprobarAnillo)
-        {
-            temporizadorVigilancia -= Time.deltaTime;
-            if (temporizadorVigilancia <= 0f)
-            {
-                yendoAComprobarAnillo = true;
-                Debug.Log("Un orco ha decidido ir a hacer la ronda al pedestal.");
-            }
-        }
-
-        // Descubrimiento pasivo o activo con la vista
-        if (!estaAgresivo && sensorVista != null && sensorVista.NoAnillo())
-        {
-            estaAgresivo = true;
-            yendoAComprobarAnillo = false; // Cancela la ronda, ya sabe que no está
-            Debug.Log("¡Han robado el anillo! El orco abandona la ruta y va a bloquear la salida.");
-        }
-
-        Vector3 origenDelRuido = Vector3.zero;
-
-        // 1. Sentido mortal (Visión directa) -> Perseguir a muerte
+        // 1. CAPA SENSORIAL (Interrupciones Globales)
+        // Aquí los sentidos pueden "sobreescribir" cualquier estado.
+        
+        // Si ve a Frodo -> ¡PERSECUCIÓN INMEDIATA!
         if (sensorVista != null && sensorVista.VerFrodo())
         {
-            patrullandoZonaLocal = false; 
-            Perseguir();
+            estadoActual = EstadoOrco.PERSECUCION;
+            ultimaPosicionConocida = objetivoFrodo.position; 
         }
-        // 2. Sentidos de rastreo (Oler u Oir pasos) -> Ir a investigar
-        else if ((sensorOlfato != null && sensorOlfato.OlerFrodo()) || 
-                 (sensorOido != null && sensorOido.OirFrodo(out origenDelRuido)))
+        // Si ve que NO hay anillo -> ¡PÁNICO! (Si no estaba ya bloqueando la salida)
+        else if (sensorVista != null && sensorVista.NoAnillo() && estadoActual != EstadoOrco.BLOQUEAR_SALIDA)
         {
-            patrullandoZonaLocal = false; 
-            if (sensorOlfato != null && sensorOlfato.OlerFrodo()) 
+            estadoActual = EstadoOrco.BLOQUEAR_SALIDA;
+        }
+        // Si huele u oye a Frodo y NO lo está viendo ni persiguiendo ya -> INVESTIGAR
+        else if (estadoActual != EstadoOrco.PERSECUCION && estadoActual != EstadoOrco.BLOQUEAR_SALIDA)
+        {
+            Vector3 origenRuido;
+            if (sensorOlfato != null && sensorOlfato.OlerFrodo())
             {
-                 if (!investigando) ultimaPosicionConocida = objetivoFrodo.position;
-            } 
-            else 
-            {
-                 ultimaPosicionConocida = origenDelRuido;
+                estadoActual = EstadoOrco.INVESTIGACION;
+                ultimaPosicionConocida = objetivoFrodo.position;
             }
-            investigando = true;
-            Investigar();
+            else if (sensorOido != null && sensorOido.OirFrodo(out origenRuido))
+            {
+                estadoActual = EstadoOrco.INVESTIGACION;
+                ultimaPosicionConocida = origenRuido;
+            }
         }
-        // 3. Ir al último punto conocido a mirar
-        else if (investigando)
+
+        // 2. MÁQUINA DE ESTADOS
+        // Ejecuta la lógica correspondiente al estado actual
+        switch (estadoActual)
         {
-            Investigar();
-        }
-        // 4. Modo Pánico: Sabe que no hay anillo, va a la salida
-        else if (estaAgresivo)
-        {
-            IrALaSalida();
-        }
-        // 5. NUEVA CAPA: Ir a comprobar el pedestal del anillo
-        else if (yendoAComprobarAnillo)
-        {
-            IrAComprobarAnillo();
-        }
-        // 6. Quedarse patrullando la zona caliente
-        else if (patrullandoZonaLocal)
-        {
-            PatrullarLocalmente();
-        }
-        // 7. Rutina inicial (Patrulla)
-        else
-        {
-            Patrullar();
+            case EstadoOrco.PATRULLA:
+                Patrullar();
+                break;
+            case EstadoOrco.PERSECUCION:
+                Perseguir();
+                break;
+            case EstadoOrco.INVESTIGACION:
+                Investigar();
+                break;
+            case EstadoOrco.COMPROBAR_ANILLO:
+                IrAComprobarAnillo();
+                break;
+            case EstadoOrco.BLOQUEAR_SALIDA:
+                IrALaSalida();
+                break;
         }
     }
 
     void Perseguir()
     {
-        investigando = true;
         agent.speed = velocidadPersecucion;
 
-        if(objetivoFrodo != null)
-        {
+        // Si lo sigo viendo, actualizo el destino
+        if (sensorVista.VerFrodo())
+        {   
             agent.destination = objetivoFrodo.position;
             ultimaPosicionConocida = objetivoFrodo.position;
         }
+        else
+        {
+            // Si lo pierdo de vista, paso a INVESTIGAR donde lo vi por última vez
+            Debug.Log("Lo he perdido. Voy a investigar.");
+            estadoActual = EstadoOrco.INVESTIGACION;
+        }
     }
-    
+
     void Investigar()
     {
-        agent.speed = velocidadPersecucion;
+        agent.speed = velocidadAlerta;
         agent.destination = ultimaPosicionConocida;
 
-        if (Vector3.Distance(transform.position, ultimaPosicionConocida) < 1.0f)
+        // Si el agente ha llegado al punto de investigación
+        if (!agent.pathPending && agent.remainingDistance < 1.0f)
         {
-            agent.isStopped = true;
+            // Esperamos un rato mirando alrededor
             temporizadorBusqueda += Time.deltaTime;
 
             if (temporizadorBusqueda > tiempoDeEsperaAlInvestigar)
             {
-                investigando = false;
-                patrullandoZonaLocal = true;
-                agent.isStopped = false;
+                // SE ACABÓ EL TIEMPO: Lógica nueva.
+                // "No está aquí. Voy a ver si el anillo sigue en su sitio."
+                Debug.Log("Aquí no hay nadie. Voy a comprobar el anillo.");
+                
+                estadoActual = EstadoOrco.COMPROBAR_ANILLO; // Cambio de estado
                 temporizadorBusqueda = 0f;
-                Debug.Log("El orco perdió el rastro, pero se queda vigilando la zona.");
-                AsignarPuntoLocal();
             }
-        }
-        else
-        {
-            if(agent.isStopped) agent.isStopped = false;
         }
     }
     
+    void IrAComprobarAnillo()
+    {
+        agent.speed = velocidadPatrulla; // Va tranquilo, no sabe nada aún
+
+        if (pedestalAnillo != null)
+        {
+            agent.destination = pedestalAnillo.position;
+
+            // Si llega al pedestal
+            if (!agent.pathPending && agent.remainingDistance < 2.0f)
+            {
+                // MOMENTO DE LA VERDAD:
+                // Usamos el sensor para ver si el anillo está físicamente
+                if (sensorVista != null && sensorVista.NoAnillo())
+                {
+                    // ¡NO ESTÁ! ¡A LA SALIDA!
+                    Debug.Log("¡HAN ROBADO EL ANILLO! ¡BLOQUEAD LA SALIDA!");
+                    estadoActual = EstadoOrco.BLOQUEAR_SALIDA;
+                }
+                else
+                {
+                    // ¡ESTÁ A SALVO!
+                    Debug.Log("El anillo sigue aquí. Falsa alarma. Vuelvo a la patrulla.");
+                    estadoActual = EstadoOrco.PATRULLA;
+                    IrAlSiguientePunto(); // Retoma la ruta para no quedarse quieto
+                }
+            }
+        }
+    }
+
     void IrALaSalida()
     {
-        agent.speed = velocidadAlerta;
-        if(agent.isStopped) agent.isStopped = false;
-
+        agent.speed = velocidadAlerta; // Va corriendo
         if (puntoSalida != null)
         {
             agent.destination = puntoSalida.position;
         }
     }
     
-    void PatrullarLocalmente()
-    {
-        agent.speed = velocidadPatrulla;
-        if(agent.isStopped) agent.isStopped = false;
-
-        if (!agent.pathPending && agent.remainingDistance < 0.5f)
-        {
-            AsignarPuntoLocal();
-        }
-    }
-    
-    void AsignarPuntoLocal()
-    {
-        Vector3 direccionAleatoria = Random.insideUnitSphere * radioPatrullaLocal;
-        direccionAleatoria += ultimaPosicionConocida;
-        NavMeshHit hit;
-
-        if (NavMesh.SamplePosition(direccionAleatoria, out hit, radioPatrullaLocal, NavMesh.AllAreas))
-        {
-            agent.destination = hit.position;
-        }
-    }
 
     void Patrullar()
     {
@@ -220,29 +228,4 @@ public class CerebroOrco : MonoBehaviour
         indiceDestino = (indiceDestino + 1) % puntosPatrulla.Length;
     }
 
-    // NUEVO COMPORTAMIENTO: Ir a ver el pedestal
-    void IrAComprobarAnillo()
-    {
-        agent.speed = velocidadPatrulla; // Va caminando normal, no sabe si ha pasado algo
-        if(agent.isStopped) agent.isStopped = false;
-
-        if (pedestalAnillo != null)
-        {
-            agent.destination = pedestalAnillo.position;
-
-            // Si llega al pedestal
-            if (!agent.pathPending && agent.remainingDistance < 2.0f)
-            {
-                // La vista comprueba si está en el Update, así que si llegamos aquí 
-                // y no ha saltado la alarma, es que el anillo sigue ahí.
-                yendoAComprobarAnillo = false;
-                
-                // Vuelve a tirar los dados para su próxima ronda
-                temporizadorVigilancia = Random.Range(tiempoMinVigilancia, tiempoMaxVigilancia);
-                Debug.Log("El orco comprobó el anillo. Todo en orden. Vuelve a su patrulla.");
-                
-                IrAlSiguientePunto(); // Retoma su ruta
-            }
-        }
-    }
 }
