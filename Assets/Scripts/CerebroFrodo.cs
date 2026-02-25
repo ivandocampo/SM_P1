@@ -1,8 +1,12 @@
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.SceneManagement;
 
 public class CerebroFrodo : MonoBehaviour
 {
+    [Header("UI")]
+    public GameObject pantallaVictoria;
+
     [Header("Configuración de Movimiento")]
     public float velocidadCaminar = 5f; // Velocidad estándar sigilosa
     public float velocidadCorrer = 10f; // Velocidad rápida (genera ruido)
@@ -26,16 +30,16 @@ public class CerebroFrodo : MonoBehaviour
     void Update()
     {
         Debug.Log("CerebroFrodo Update ejecutándose");
-        // Si Frodo ya ha escapado, el cerebro deja de procesar decisiones
-        if (haEscapado) return;
+        
+        if (haEscapado)
+        {
+            if (Input.GetKeyDown(KeyCode.Return))
+                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            return;
+        }
 
-        // Frodo procesa el teclado y se mueve
         MoverJugador();       
-        
-        // Frodo decide si usa el Anillo
         GestionarAnillo();    
-        
-        // Frodo analiza la información de sus sentidos físicos
         ComprobarObjetivos(); 
     }
 
@@ -105,6 +109,9 @@ public class CerebroFrodo : MonoBehaviour
     void Victoria()
     {
         haEscapado = true;               
-        Debug.Log("Frodo ha escapado con el Anillo."); 
+        if (pantallaVictoria != null)
+        {
+            pantallaVictoria.SetActive(true);
+        }
     }
 }
