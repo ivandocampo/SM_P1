@@ -26,7 +26,7 @@ public class PuertaInteractiva : MonoBehaviour
 
     void Update()
     {
-        if (frodoCerca && Input.GetKeyDown(KeyCode.Space) && !animando)
+        if (frodoCerca && Input.GetKeyDown(KeyCode.P) && !animando)
         {
             StartCoroutine(MoverPuerta());
         }
@@ -86,7 +86,7 @@ public class PuertaInteractiva : MonoBehaviour
 
     void OnTriggerExit(Collider other)
     {
-        if (other.GetComponent<CerebroFrodo>() != null)
+        if (other.GetComponentInParent<CerebroFrodo>() != null)
             frodoCerca = false;
     }
 
@@ -100,7 +100,7 @@ public class PuertaInteractiva : MonoBehaviour
     void OnTriggerEnter(Collider other)
     {
         Debug.Log("Entró algo al trigger: " + other.name);
-        if (other.GetComponent<CerebroFrodo>() != null)
+        if (other.GetComponentInParent<CerebroFrodo>() != null)
         {
             Debug.Log("¡Frodo detectado!");
             frodoCerca = true;
