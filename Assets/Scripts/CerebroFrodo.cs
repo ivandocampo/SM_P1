@@ -41,21 +41,16 @@ public class CerebroFrodo : MonoBehaviour
 
     void MoverJugador()
     {
-        float inputHorizontal = Input.GetAxis("Horizontal"); 
-        float inputVertical = Input.GetAxis("Vertical");     
+        float inputHorizontal = Input.GetAxis("Horizontal");
+        float inputVertical = Input.GetAxis("Vertical");
 
-        Vector3 movimiento = new Vector3(inputHorizontal, 0f, inputVertical).normalized;
+        Vector3 movimiento = new Vector3(-inputHorizontal, 0f, -inputVertical).normalized;
 
         if (Input.GetKey(KeyCode.LeftShift) && movimiento.magnitude > 0.1f)
-        {
-            estaCorriendo = true; // Frodo corre
-        }
+            estaCorriendo = true;
         else
-        {
-            estaCorriendo = false; // Frodo camina sigilosamente
-        }
+            estaCorriendo = false;
 
-        // Seleccionar la velocidad adecuada según su estado
         float velocidadActual = estaCorriendo ? velocidadCorrer : velocidadCaminar;
 
         if (movimiento.magnitude >= 0.1f)
