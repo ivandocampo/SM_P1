@@ -504,8 +504,8 @@ MonoBehaviour:
   distanciaAtaque: 1.2
   puntoSalida: {fileID: 33262981}
   pedestalAnillo: {fileID: 458616568}
-  tiempoMinVigilancia: 15
-  tiempoMaxVigilancia: 40
+  tiempoMinVigilancia: 10
+  tiempoMaxVigilancia: 25
 --- !u!195 &23124702
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -5738,8 +5738,8 @@ MonoBehaviour:
   distanciaAtaque: 1.2
   puntoSalida: {fileID: 33262981}
   pedestalAnillo: {fileID: 458616568}
-  tiempoMinVigilancia: 15
-  tiempoMaxVigilancia: 40
+  tiempoMinVigilancia: 10
+  tiempoMaxVigilancia: 25
 --- !u!195 &361772878
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -21925,8 +21925,8 @@ MonoBehaviour:
   distanciaAtaque: 1.2
   puntoSalida: {fileID: 33262981}
   pedestalAnillo: {fileID: 458616568}
-  tiempoMinVigilancia: 15
-  tiempoMaxVigilancia: 40
+  tiempoMinVigilancia: 10
+  tiempoMaxVigilancia: 25
 --- !u!195 &1397636005
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -26473,8 +26473,8 @@ MonoBehaviour:
   distanciaAtaque: 1.2
   puntoSalida: {fileID: 33262981}
   pedestalAnillo: {fileID: 458616568}
-  tiempoMinVigilancia: 15
-  tiempoMaxVigilancia: 40
+  tiempoMinVigilancia: 10
+  tiempoMaxVigilancia: 25
 --- !u!195 &1693090676
 NavMeshAgent:
   m_ObjectHideFlags: 0
