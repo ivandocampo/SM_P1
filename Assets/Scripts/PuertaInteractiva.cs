@@ -4,8 +4,8 @@ using System.Collections;
 
 public class PuertaInteractiva : MonoBehaviour
 {
-    public float speed = 2f;  // Velocidad de la rotación de la puerta
-    public float angle = 80f; // Ángulo de apertura de la puerta
+    public float speed;  // Velocidad de la rotación de la puerta
+    public float angle; // Ángulo de apertura de la puerta
     public Vector3 direction = Vector3.up; // Dirección de la rotación (para abrir)
 
     public bool FrodoCerca;
@@ -24,7 +24,7 @@ public class PuertaInteractiva : MonoBehaviour
     void Update()
     {
         // Solo rota si la puerta no ha llegado al ángulo de apertura (80 grados)
-        if (Mathf.Abs(puertaTransform.eulerAngles.y - angle) > 0.1f)
+        if (Mathf.Round(puertaTransform.eulerAngles.y) != angle)
         {
             puertaTransform.Rotate(direction * speed); // Rota la puerta
         }
@@ -33,7 +33,7 @@ public class PuertaInteractiva : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.X) && FrodoCerca && abrir == false)
         {
             // Establecer el ángulo objetivo (80 grados)
-            angle = 80f; 
+            angle = 270; 
             direction = Vector3.up;  // Definir la dirección de la rotación
             abrir=true;
         }

@@ -15875,9 +15875,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
-  speed: 2
-  angle: 80
-  direction: {x: 0, y: 1, z: 0}
+  speed: 10
+  angle: 0
+  direction: {x: 0, y: 0, z: 0}
   FrodoCerca: 0
   abrir: 0
 --- !u!1 &971733343
@@ -18660,9 +18660,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
-  speed: 2
-  angle: 80
-  direction: {x: 0, y: 1, z: 0}
+  speed: 10
+  angle: 0
+  direction: {x: 0, y: 0, z: 0}
   FrodoCerca: 0
   abrir: 0
 --- !u!1 &1158499991
@@ -22461,9 +22461,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
-  speed: 2
-  angle: 80
-  direction: {x: 0, y: 1, z: 0}
+  speed: 10
+  angle: 0
+  direction: {x: 0, y: 0, z: 0}
   FrodoCerca: 0
   abrir: 0
 --- !u!1 &1382621584
@@ -26709,7 +26709,7 @@ Transform:
   m_GameObject: {fileID: 1651455636}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.55, y: -0.03, z: 0.62999994}
+  m_LocalPosition: {x: 0.45999908, y: -0.03, z: 0.62999994}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -30378,7 +30378,7 @@ Transform:
   m_GameObject: {fileID: 1820096060}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -33.185, y: 0.089999996, z: -20.851}
+  m_LocalPosition: {x: -35.71, y: 0.089999996, z: -20.851}
   m_LocalScale: {x: 2.5, y: 3, z: 0.7}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -34328,9 +34328,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
-  speed: 2
-  angle: 80
-  direction: {x: 0, y: 1, z: 0}
+  speed: 10
+  angle: 0
+  direction: {x: 0, y: 0, z: 0}
   FrodoCerca: 0
   abrir: 0
 --- !u!1 &2121461359
