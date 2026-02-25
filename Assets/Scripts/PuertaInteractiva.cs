@@ -4,107 +4,60 @@ using System.Collections;
 
 public class PuertaInteractiva : MonoBehaviour
 {
-    [Header("Configuración")]
-    public Transform puertaVisual;
-    public float anguloAbierta = 90f;
-    public float velocidadApertura = 2f;
-    public bool aperturaLenta = false;
+    public float speed = 2f;  // Velocidad de la rotación de la puerta
+    public float angle = 80f; // Ángulo de apertura de la puerta
+    public Vector3 direction = Vector3.up; // Dirección de la rotación (para abrir)
 
-    [Header("Ruido")]
-    public float radioRuido = 12f;
+    public bool FrodoCerca;
+    public bool abrir;
+    private Transform puertaTransform;  // Para almacenar la referencia al objeto vacío
 
-    private bool abierta = false;
-    private bool frodoCerca = false;
-    private bool animando = false;
-
-    private NavMeshObstacle obstacle;
-
+    // Start is called before the first frame update
     void Start()
     {
-        obstacle = GetComponent<NavMeshObstacle>();
+        puertaTransform = transform.parent;
+        // Establece el ángulo inicial
+        angle = puertaTransform.eulerAngles.y;
     }
 
+    // Update is called once per frame
     void Update()
     {
-        if (frodoCerca && Input.GetKeyDown(KeyCode.P) && !animando)
+        // Solo rota si la puerta no ha llegado al ángulo de apertura (80 grados)
+        if (Mathf.Abs(puertaTransform.eulerAngles.y - angle) > 0.1f)
         {
-            StartCoroutine(MoverPuerta());
+            puertaTransform.Rotate(direction * speed); // Rota la puerta
+        }
+
+        // Cuando Frodo está cerca y presiona P, la puerta se abre
+        if (Input.GetKeyDown(KeyCode.X) && FrodoCerca && abrir == false)
+        {
+            // Establecer el ángulo objetivo (80 grados)
+            angle = 80f; 
+            direction = Vector3.up;  // Definir la dirección de la rotación
+            abrir=true;
+        }
+        else if (Input.GetKeyDown(KeyCode.X) && FrodoCerca && abrir)
+        {
+            angle = 0;
+            direction = Vector3.down;
+            abrir=false;
         }
     }
 
-    IEnumerator MoverPuerta()
+    void OnTriggerStay(Collider other)
     {
-        animando = true;
-
-        float anguloInicial = puertaVisual.localEulerAngles.y;
-        float anguloFinal = abierta ? 0f : anguloAbierta;
-
-        if (!abierta && obstacle != null)
-            obstacle.enabled = false;
-
-        if (aperturaLenta)
+        if (other.gameObject.tag == "Player")
         {
-            float t = 0;
-            while (t < 1)
-            {
-                t += Time.deltaTime * velocidadApertura;
-                float angulo = Mathf.LerpAngle(anguloInicial, anguloFinal, t);
-                puertaVisual.localEulerAngles = new Vector3(0, angulo, 0);
-                yield return null;
-            }
-        }
-        else
-        {
-            puertaVisual.localEulerAngles = new Vector3(0, anguloFinal, 0);
-        }
-
-        abierta = !abierta;
-
-        if (!abierta && obstacle != null)
-            obstacle.enabled = true;
-
-        GenerarRuido();
-
-        animando = false;
-    }
-
-    void GenerarRuido()
-    {
-        CerebroOrco[] orcos = FindObjectsByType<CerebroOrco>(FindObjectsSortMode.None);
-
-        foreach (var orco in orcos)
-        {
-            float dist = Vector3.Distance(transform.position, orco.transform.position);
-
-            if (dist < radioRuido)
-            {
-                orco.SendMessage("InvestigarPuerta", transform.position, SendMessageOptions.DontRequireReceiver);
-            }
+            FrodoCerca = true; // Si Frodo está cerca, actualizamos el estado
         }
     }
-
 
     void OnTriggerExit(Collider other)
     {
-        if (other.GetComponentInParent<CerebroFrodo>() != null)
-            frodoCerca = false;
-    }
-
-    void OnGUI()
-    {
-        if (frodoCerca)
+        if (other.gameObject.tag == "Player")
         {
-            GUI.Label(new Rect(Screen.width / 2 - 70, Screen.height - 80, 200, 30), "Pulsa SPACE para abrir");
+            FrodoCerca = false; // Si Frodo sale del área, actualizamos el estado
         }
     }
-    void OnTriggerEnter(Collider other)
-    {
-        Debug.Log("Entró algo al trigger: " + other.name);
-        if (other.GetComponentInParent<CerebroFrodo>() != null)
-        {
-            Debug.Log("¡Frodo detectado!");
-            frodoCerca = true;
-        }
-    }
-
 }

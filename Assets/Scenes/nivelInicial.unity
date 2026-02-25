@@ -2175,9 +2175,10 @@ GameObject:
   - component: {fileID: 135324206}
   - component: {fileID: 135324204}
   - component: {fileID: 135324211}
-  m_Layer: 0
+  - component: {fileID: 135324212}
+  m_Layer: 3
   m_Name: Frodo
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -2330,6 +2331,33 @@ MonoBehaviour:
   velocidadCorrer: 10
   estaCorriendo: 0
   usandoAnillo: 0
+--- !u!54 &135324212
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 135324203}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
 --- !u!1 &146326840
 GameObject:
   m_ObjectHideFlags: 0
@@ -3796,7 +3824,7 @@ GameObject:
   m_Component:
   - component: {fileID: 231728910}
   m_Layer: 0
-  m_Name: PuertaComun
+  m_Name: PuertaControl5
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3810,12 +3838,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 231728909}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.5, y: 0.03, z: 0.37}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: -0, y: -0.7071068, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: -16.069, y: 0.089999996, z: -25.36}
+  m_LocalScale: {x: 2.4999998, y: 3, z: 0.6999999}
   m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 968354859}
+  m_Children:
+  - {fileID: 968354859}
+  m_Father: {fileID: 1966215358}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &243746064
 GameObject:
@@ -6361,7 +6390,7 @@ GameObject:
   m_Component:
   - component: {fileID: 401400241}
   m_Layer: 0
-  m_Name: PuertaComun
+  m_Name: PuertaControl6
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6375,12 +6404,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 401400240}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.5, y: 0.03, z: 0.37}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: -0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -13.09, y: 0.089999996, z: -30.661}
+  m_LocalScale: {x: 5.7, y: 3, z: 0.7}
   m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1157498457}
+  m_Children:
+  - {fileID: 1157498457}
+  m_Father: {fileID: 1966215358}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &405375085
 GameObject:
@@ -15342,7 +15372,8 @@ GameObject:
   - component: {fileID: 953518884}
   - component: {fileID: 953518883}
   - component: {fileID: 953518882}
-  - component: {fileID: 953518881}
+  - component: {fileID: 953518885}
+  - component: {fileID: 953518886}
   m_Layer: 0
   m_Name: Puerta3
   m_TagString: Untagged
@@ -15358,30 +15389,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 953518879}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -34.67, y: 0, z: -3.6}
-  m_LocalScale: {x: 3, y: 3, z: 0.7}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0.5, y: -0.03, z: -0.37000108}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1356839270}
-  m_Father: {fileID: 1966215358}
+  m_Children: []
+  m_Father: {fileID: 1356839270}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!208 &953518881
-NavMeshObstacle:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 953518879}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Shape: 1
-  m_Extents: {x: 0.5, y: 0.5, z: 0.5}
-  m_MoveThreshold: 0.1
-  m_Carve: 1
-  m_CarveOnlyStationary: 1
-  m_Center: {x: 0, y: 0, z: 0}
-  m_TimeToStationary: 0.5
 --- !u!65 &953518882
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -15397,11 +15411,11 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
+  m_Size: {x: 3, y: 1, z: 5}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!23 &953518883
 MeshRenderer:
@@ -15460,6 +15474,39 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 953518879}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!208 &953518885
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 953518879}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 0.5, y: 0.5, z: 0.5}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 1
+  m_Center: {x: 0, y: 0, z: 0}
+  m_TimeToStationary: 0.5
+--- !u!114 &953518886
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 953518879}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
+  speed: 10
+  angle: 0
+  direction: {x: 0, y: 0, z: 0}
+  FrodoCerca: 0
+  abrir: 0
 --- !u!1 &956380993
 GameObject:
   m_ObjectHideFlags: 0
@@ -15696,7 +15743,8 @@ GameObject:
   - component: {fileID: 968354863}
   - component: {fileID: 968354862}
   - component: {fileID: 968354861}
-  - component: {fileID: 968354860}
+  - component: {fileID: 968354864}
+  - component: {fileID: 968354865}
   m_Layer: 0
   m_Name: Puerta5
   m_TagString: Untagged
@@ -15712,30 +15760,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 968354858}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: -15.81, y: 0, z: -24.11}
-  m_LocalScale: {x: 2.5, y: 3, z: 0.7}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0.5000001, y: -0.03, z: -0.3699986}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 231728910}
-  m_Father: {fileID: 1966215358}
+  m_Children: []
+  m_Father: {fileID: 231728910}
   m_LocalEulerAnglesHint: {x: 0, y: -90, z: 0}
---- !u!208 &968354860
-NavMeshObstacle:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 968354858}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Shape: 1
-  m_Extents: {x: 0.5, y: 0.5, z: 0.5}
-  m_MoveThreshold: 0.1
-  m_Carve: 1
-  m_CarveOnlyStationary: 1
-  m_Center: {x: 0, y: 0, z: 0}
-  m_TimeToStationary: 0.5
 --- !u!65 &968354861
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -15751,11 +15782,11 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
+  m_Size: {x: 3, y: 1, z: 5}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!23 &968354862
 MeshRenderer:
@@ -15814,6 +15845,39 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 968354858}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!208 &968354864
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 968354858}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 0.5, y: 0.5, z: 0.5}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 1
+  m_Center: {x: 0, y: 0, z: 0}
+  m_TimeToStationary: 0.5
+--- !u!114 &968354865
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 968354858}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
+  speed: 2
+  angle: 80
+  direction: {x: 0, y: 1, z: 0}
+  FrodoCerca: 0
+  abrir: 0
 --- !u!1 &971733343
 GameObject:
   m_ObjectHideFlags: 0
@@ -18464,7 +18528,8 @@ GameObject:
   - component: {fileID: 1157498461}
   - component: {fileID: 1157498460}
   - component: {fileID: 1157498459}
-  - component: {fileID: 1157498458}
+  - component: {fileID: 1157498462}
+  - component: {fileID: 1157498463}
   m_Layer: 0
   m_Name: Puerta6
   m_TagString: Untagged
@@ -18480,30 +18545,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1157498456}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -10.24, y: 0, z: -30.92}
-  m_LocalScale: {x: 5.7, y: 3, z: 0.7}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0.5000001, y: -0.03, z: -0.37000108}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 401400241}
-  m_Father: {fileID: 1966215358}
+  m_Children: []
+  m_Father: {fileID: 401400241}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!208 &1157498458
-NavMeshObstacle:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1157498456}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Shape: 1
-  m_Extents: {x: 0.5, y: 0.5, z: 0.5}
-  m_MoveThreshold: 0.1
-  m_Carve: 1
-  m_CarveOnlyStationary: 1
-  m_Center: {x: 0, y: 0, z: 0}
-  m_TimeToStationary: 0.5
 --- !u!65 &1157498459
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -18519,11 +18567,11 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
+  m_Size: {x: 3, y: 1, z: 5}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!23 &1157498460
 MeshRenderer:
@@ -18582,6 +18630,39 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1157498456}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!208 &1157498462
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1157498456}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 0.5, y: 0.5, z: 0.5}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 1
+  m_Center: {x: 0, y: 0, z: 0}
+  m_TimeToStationary: 0.5
+--- !u!114 &1157498463
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1157498456}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
+  speed: 2
+  angle: 80
+  direction: {x: 0, y: 1, z: 0}
+  FrodoCerca: 0
+  abrir: 0
 --- !u!1 &1158499991
 GameObject:
   m_ObjectHideFlags: 0
@@ -21143,7 +21224,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1271696207}
   m_Layer: 0
-  m_Name: PuertaComun
+  m_Name: PuertaControl2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -21157,12 +21238,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1271696206}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.5, y: 0.03, z: 0.37}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: -0.000000014413425, y: -0.94163984, z: -0.000000007505082, w: 0.33662224}
+  m_LocalPosition: {x: -51.14748, y: 0.104999974, z: -15.642745}
+  m_LocalScale: {x: 2.5000014, y: 3.5, z: 0.70000035}
   m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1377844258}
+  m_Children:
+  - {fileID: 1377844258}
+  m_Father: {fileID: 1966215358}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1278267401
 GameObject:
@@ -21989,7 +22071,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1356839270}
   m_Layer: 0
-  m_Name: PuertaComun
+  m_Name: PuertaControl3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -22004,11 +22086,12 @@ Transform:
   m_GameObject: {fileID: 1356839269}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.5, y: 0.03, z: 0.37}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalPosition: {x: -36.17, y: 0.089999996, z: -3.3409996}
+  m_LocalScale: {x: 3, y: 3, z: 0.7}
   m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 953518880}
+  m_Children:
+  - {fileID: 953518880}
+  m_Father: {fileID: 1966215358}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1366591415
 GameObject:
@@ -22246,7 +22329,8 @@ GameObject:
   - component: {fileID: 1377844262}
   - component: {fileID: 1377844261}
   - component: {fileID: 1377844260}
-  - component: {fileID: 1377844259}
+  - component: {fileID: 1377844263}
+  - component: {fileID: 1377844264}
   m_Layer: 0
   m_Name: Puerta2
   m_TagString: Untagged
@@ -22262,30 +22346,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1377844257}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.000000014413425, y: -0.94163984, z: -0.000000007505082, w: 0.33662224}
-  m_LocalPosition: {x: -51.95, y: 0, z: -14.65}
-  m_LocalScale: {x: 2.5, y: 3.5, z: 0.7}
+  m_LocalRotation: {x: -0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.50000024, y: -0.029999996, z: -0.36999926}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1271696207}
-  m_Father: {fileID: 1966215358}
+  m_Children: []
+  m_Father: {fileID: 1271696207}
   m_LocalEulerAnglesHint: {x: 0, y: -860.658, z: 0}
---- !u!208 &1377844259
-NavMeshObstacle:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1377844257}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Shape: 1
-  m_Extents: {x: 0.5, y: 0.5, z: 0.5}
-  m_MoveThreshold: 0.1
-  m_Carve: 1
-  m_CarveOnlyStationary: 1
-  m_Center: {x: 0, y: 0, z: 0}
-  m_TimeToStationary: 0.5
 --- !u!65 &1377844260
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -22301,11 +22368,11 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
+  m_Size: {x: 3, y: 1, z: 5}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!23 &1377844261
 MeshRenderer:
@@ -22364,6 +22431,39 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1377844257}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!208 &1377844263
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1377844257}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 0.5, y: 0.5, z: 0.5}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 1
+  m_Center: {x: 0, y: 0, z: 0}
+  m_TimeToStationary: 0.5
+--- !u!114 &1377844264
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1377844257}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
+  speed: 2
+  angle: 80
+  direction: {x: 0, y: 1, z: 0}
+  FrodoCerca: 0
+  abrir: 0
 --- !u!1 &1382621584
 GameObject:
   m_ObjectHideFlags: 0
@@ -26588,8 +26688,9 @@ GameObject:
   - component: {fileID: 1651455641}
   - component: {fileID: 1651455640}
   - component: {fileID: 1651455639}
-  - component: {fileID: 1651455638}
-  m_Layer: 0
+  - component: {fileID: 1651455642}
+  - component: {fileID: 1651455643}
+  m_Layer: 6
   m_Name: Puerta1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -26604,30 +26705,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1651455636}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -34.56, y: 0, z: -20.41}
-  m_LocalScale: {x: 2.5, y: 3, z: 0.7}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -0.55, y: -0.03, z: 0.62999994}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1820096061}
-  m_Father: {fileID: 1966215358}
+  m_Children: []
+  m_Father: {fileID: 1820096061}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!208 &1651455638
-NavMeshObstacle:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1651455636}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Shape: 1
-  m_Extents: {x: 0.5, y: 0.5, z: 0.5}
-  m_MoveThreshold: 0.1
-  m_Carve: 1
-  m_CarveOnlyStationary: 1
-  m_Center: {x: 0, y: 0, z: 0}
-  m_TimeToStationary: 0.5
 --- !u!65 &1651455639
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -26643,11 +26727,11 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
+  m_Size: {x: 3, y: 1, z: 5}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!23 &1651455640
 MeshRenderer:
@@ -26706,6 +26790,39 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1651455636}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1651455642
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1651455636}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
+  speed: 10
+  angle: 0
+  direction: {x: 0, y: 0, z: 0}
+  FrodoCerca: 0
+  abrir: 0
+--- !u!208 &1651455643
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1651455636}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 0.5, y: 0.5, z: 0.5}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 1
+  m_Center: {x: 0, y: 0, z: 0}
+  m_TimeToStationary: 0.5
 --- !u!1 &1663905589
 GameObject:
   m_ObjectHideFlags: 0
@@ -28947,7 +29064,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1774684980}
   m_Layer: 0
-  m_Name: PuertaComun
+  m_Name: PuertaControl4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -28961,12 +29078,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1774684979}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.5, y: 0.03, z: 0.37}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: -0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -21.05, y: 0.089999996, z: -15.311}
+  m_LocalScale: {x: 2.5, y: 3, z: 0.7}
   m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2111731816}
+  m_Children:
+  - {fileID: 2111731816}
+  m_Father: {fileID: 1966215358}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1777428822
 GameObject:
@@ -30240,8 +30358,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1820096061}
-  m_Layer: 0
-  m_Name: PuertaComun
+  m_Layer: 6
+  m_Name: PuertaControl1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -30256,11 +30374,12 @@ Transform:
   m_GameObject: {fileID: 1820096060}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.5, y: 0.03, z: 0.37}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalPosition: {x: -33.185, y: 0.089999996, z: -20.851}
+  m_LocalScale: {x: 2.5, y: 3, z: 0.7}
   m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1651455637}
+  m_Children:
+  - {fileID: 1651455637}
+  m_Father: {fileID: 1966215358}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1826280076
 GameObject:
@@ -32281,12 +32400,12 @@ Transform:
   - {fileID: 1382621585}
   - {fileID: 476997051}
   - {fileID: 687348768}
-  - {fileID: 1651455637}
-  - {fileID: 968354859}
-  - {fileID: 2111731816}
-  - {fileID: 1157498457}
-  - {fileID: 953518880}
-  - {fileID: 1377844258}
+  - {fileID: 1820096061}
+  - {fileID: 231728910}
+  - {fileID: 1774684980}
+  - {fileID: 401400241}
+  - {fileID: 1356839270}
+  - {fileID: 1271696207}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1984109263
@@ -34075,7 +34194,8 @@ GameObject:
   - component: {fileID: 2111731820}
   - component: {fileID: 2111731819}
   - component: {fileID: 2111731818}
-  - component: {fileID: 2111731817}
+  - component: {fileID: 2111731821}
+  - component: {fileID: 2111731822}
   m_Layer: 0
   m_Name: Puerta4
   m_TagString: Untagged
@@ -34091,30 +34211,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2111731815}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -19.8, y: 0, z: -15.57}
-  m_LocalScale: {x: 2.5, y: 3, z: 0.7}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0.5, y: -0.03, z: -0.36999974}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1774684980}
-  m_Father: {fileID: 1966215358}
+  m_Children: []
+  m_Father: {fileID: 1774684980}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!208 &2111731817
-NavMeshObstacle:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2111731815}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Shape: 1
-  m_Extents: {x: 0.5, y: 0.5, z: 0.5}
-  m_MoveThreshold: 0.1
-  m_Carve: 1
-  m_CarveOnlyStationary: 1
-  m_Center: {x: 0, y: 0, z: 0}
-  m_TimeToStationary: 0.5
 --- !u!65 &2111731818
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -34130,11 +34233,11 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
+  m_Size: {x: 3, y: 1, z: 5}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!23 &2111731819
 MeshRenderer:
@@ -34193,6 +34296,39 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2111731815}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!208 &2111731821
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2111731815}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 0.5, y: 0.5, z: 0.5}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 1
+  m_Center: {x: 0, y: 0, z: 0}
+  m_TimeToStationary: 0.5
+--- !u!114 &2111731822
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2111731815}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
+  speed: 2
+  angle: 80
+  direction: {x: 0, y: 1, z: 0}
+  FrodoCerca: 0
+  abrir: 0
 --- !u!1 &2121461359
 GameObject:
   m_ObjectHideFlags: 0
