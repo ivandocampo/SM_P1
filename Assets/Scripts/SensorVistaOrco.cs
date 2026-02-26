@@ -22,13 +22,11 @@ public class SensorVistaOrco : MonoBehaviour
     {
         if (objetivoFrodo == null) return false;
 
-        // --- SOLUCIÓN: Si tiene el anillo puesto, no lo ve ---
         CerebroFrodo scriptFrodo = objetivoFrodo.GetComponent<CerebroFrodo>();
         if (scriptFrodo != null && scriptFrodo.usandoAnillo)
         {
             return false; // Es invisible, la vista se anula directamente
         }
-        // ------------------------------------------------------
 
         float distancia = Vector3.Distance(transform.position, objetivoFrodo.position);
         

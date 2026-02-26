@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.AI; // Necesario para leer la velocidad del NavMesh
+using UnityEngine.AI; 
 
 public class SensorOidoOrco : MonoBehaviour
 {
@@ -27,10 +27,10 @@ public class SensorOidoOrco : MonoBehaviour
 
         float distancia = Vector3.Distance(transform.position, objetivoFrodo.position);
 
-        // 1. Si está fuera de rango, no oímos nada
+        // Si está fuera de rango, no oímos nada
         if (distancia > rangoOido) return false;
 
-        // 2. Calculamos la velocidad real física
+        // Calculamos la velocidad real física
         float velocidadActual = 0f;
 
         if (agenteFrodo != null)
@@ -43,12 +43,11 @@ public class SensorOidoOrco : MonoBehaviour
             // velocidadActual = (objetivoFrodo.position - ultimaPosicion).magnitude / Time.deltaTime;
         }
 
-        // 3. Evaluación Física: ¿Se mueve lo suficientemente rápido para hacer ruido?
-        // Ya no preguntamos "bool estaCorriendo", sino que medimos el hecho.
+        // Evaluación Física: ¿Se mueve lo suficientemente rápido para hacer ruido?
         if (velocidadActual > umbralVelocidadRuido)
         {
             posicionRuido = objetivoFrodo.position;
-            return true; // ¡Oído!
+            return true; 
         }
 
         return false;

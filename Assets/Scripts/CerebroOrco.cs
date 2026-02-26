@@ -68,7 +68,6 @@ public class CerebroOrco : MonoBehaviour
 
     void Update()
     {
-        // 0. CAPA FÍSICA (Game Over)
         // Mantenemos lógica original: si está muy cerca, te atrapa.
         if (objetivoFrodo != null && Vector3.Distance(transform.position, objetivoFrodo.position) < distanciaAtaque)
         {
@@ -77,16 +76,14 @@ public class CerebroOrco : MonoBehaviour
             return; 
         }
 
-        // 1. CAPA SENSORIAL (Interrupciones Globales)
-        // Aquí los sentidos pueden "sobreescribir" cualquier estado.
         
-        // Si ve a Frodo -> ¡PERSECUCIÓN INMEDIATA!
+        // Si ve a Frodo -> Persecucion
         if (sensorVista != null && sensorVista.VerFrodo())
         {
             estadoActual = EstadoOrco.PERSECUCION;
             ultimaPosicionConocida = objetivoFrodo.position; 
         }
-        // Si ve que NO hay anillo -> ¡PÁNICO! (Si no estaba ya bloqueando la salida)
+        // Si ve que NO hay anillo -> Agresivo
         else if (sensorVista != null && sensorVista.NoAnillo() && estadoActual != EstadoOrco.BLOQUEAR_SALIDA)
         {
             estadoActual = EstadoOrco.BLOQUEAR_SALIDA;
@@ -107,7 +104,6 @@ public class CerebroOrco : MonoBehaviour
             }
         }
 
-        // 2. MÁQUINA DE ESTADOS
         // Ejecuta la lógica correspondiente al estado actual
         switch (estadoActual)
         {
@@ -160,7 +156,6 @@ public class CerebroOrco : MonoBehaviour
 
             if (temporizadorBusqueda > tiempoDeEsperaAlInvestigar)
             {
-                // SE ACABÓ EL TIEMPO: Lógica nueva.
                 // "No está aquí. Voy a ver si el anillo sigue en su sitio."
                 Debug.Log("Aquí no hay nadie. Voy a comprobar el anillo.");
                 
@@ -181,17 +176,14 @@ public class CerebroOrco : MonoBehaviour
             // Si llega al pedestal
             if (!agent.pathPending && agent.remainingDistance < 2.0f)
             {
-                // MOMENTO DE LA VERDAD:
                 // Usamos el sensor para ver si el anillo está físicamente
                 if (sensorVista != null && sensorVista.NoAnillo())
                 {
-                    // ¡NO ESTÁ! ¡A LA SALIDA!
                     Debug.Log("¡HAN ROBADO EL ANILLO! ¡BLOQUEAD LA SALIDA!");
                     estadoActual = EstadoOrco.BLOQUEAR_SALIDA;
                 }
                 else
                 {
-                    // ¡ESTÁ A SALVO!
                     Debug.Log("El anillo sigue aquí. Falsa alarma. Vuelvo a la patrulla.");
                     estadoActual = EstadoOrco.PATRULLA;
                     IrAlSiguientePunto(); // Retoma la ruta para no quedarse quieto
