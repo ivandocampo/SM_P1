@@ -1,117 +1,99 @@
 using UnityEngine;
-using UnityEngine.AI;
-using UnityEngine.SceneManagement;
 
 public class CerebroFrodo : MonoBehaviour
 {
-    [Header("UI")]
-    public GameObject pantallaVictoria;
+    // Estado perceptible por los sensores de los Orcos
+    public bool estaCorriendo { get; private set; } = false;
+    public bool usandoAnillo { get; private set; } = false;
 
-    [Header("Configuración de Movimiento")]
-    public float velocidadCaminar = 5f; // Velocidad estándar sigilosa
-    public float velocidadCorrer = 10f; // Velocidad rápida (genera ruido)
+    [Header("Magia del Anillo")]
+    public float duracionAnillo = 5f;        // Segundos que dura la invisibilidad
+    public float tiempoRecarga = 30f;        // Segundos que tarda en volver a usarse
+    private float temporizadorUso = 0f;
+    private float temporizadorRecarga = 0f;
 
-    [Header("Estado (Información para los Orcos)")]
-    public bool estaCorriendo = false; // Indica a los enemigos si Frodo está haciendo ruido
-    public bool usandoAnillo = false;  // Indica a los enemigos si Frodo emite olor
+    private ActuadorMovimientoFrodo actuadorMovimiento;
+    private ActuadorInteraccionFrodo actuadorInteraccion;
+    private SensorTactoFrodo sensorTacto;
 
-    private NavMeshAgent agent;         // Componente que gestiona el movimiento físico
-    private SensorTactoFrodo sensorTacto; // Sentido para interactuar con objetos
-    private bool tieneElAnillo = false; // Memoria interna: Frodo ya tiene el objetivo?
-    private bool haEscapado = false;    // Estado final: Frodo ha ganado?
+    private bool tieneElAnillo = false;
+
+    // Propiedades de solo lectura para la UI del anillo
+    public bool TieneElAnillo => tieneElAnillo;
+    public bool AnilloListo => tieneElAnillo && !usandoAnillo && temporizadorRecarga <= 0;
+    public float ProgresoUso => usandoAnillo ? temporizadorUso / duracionAnillo : 0f;          // 1→0 mientras está activo
+    public float ProgresoRecarga => temporizadorRecarga > 0 ? 1f - (temporizadorRecarga / tiempoRecarga) : 1f; // 0→1 mientras recarga
 
     void Start()
     {
-        agent = GetComponent<NavMeshAgent>();
+        actuadorMovimiento = GetComponent<ActuadorMovimientoFrodo>();
+        actuadorInteraccion = GetComponent<ActuadorInteraccionFrodo>();
         sensorTacto = GetComponent<SensorTactoFrodo>();
-        agent.updateRotation = true; 
     }
 
     void Update()
     {
-        Debug.Log("CerebroFrodo Update ejecutándose");
-        
-        if (haEscapado)
-        {
-            if (Input.GetKeyDown(KeyCode.Return))
-                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-            return;
-        }
+        if (!GameManager.Instance.PartidaActiva) return;
 
-        MoverJugador();       
-        GestionarAnillo();    
-        ComprobarObjetivos(); 
+        ManejarAnillo();
+        LeerInput();
+        ComprobarSensores();
     }
 
-    void MoverJugador()
+    void LeerInput()
     {
-        float inputHorizontal = Input.GetAxis("Horizontal");
-        float inputVertical = Input.GetAxis("Vertical");
+        float h = Input.GetAxis("Horizontal");
+        float v = Input.GetAxis("Vertical");
+        Vector3 direccion = new Vector3(-h, 0f, -v).normalized;
 
-        Vector3 movimiento = new Vector3(-inputHorizontal, 0f, -inputVertical).normalized;
-
-        if (Input.GetKey(KeyCode.LeftShift) && movimiento.magnitude > 0.1f)
-            estaCorriendo = true;
-        else
-            estaCorriendo = false;
-
-        float velocidadActual = estaCorriendo ? velocidadCorrer : velocidadCaminar;
-
-        if (movimiento.magnitude >= 0.1f)
-        {
-            agent.Move(movimiento * velocidadActual * Time.deltaTime);
-            transform.rotation = Quaternion.LookRotation(movimiento);
-        }
+        estaCorriendo = Input.GetKey(KeyCode.LeftShift) && direccion.magnitude > 0.1f;
+        actuadorMovimiento.Mover(direccion, estaCorriendo);
     }
 
-    void GestionarAnillo()
+    // Controla los tiempos y ordena al actuador cambiar la visibilidad
+    void ManejarAnillo()
     {
-        if (tieneElAnillo && Input.GetKeyDown(KeyCode.Space))
+        // Restar tiempo de recarga si está en cooldown
+        if (!usandoAnillo && temporizadorRecarga > 0)
         {
-            // Alternar el estado del anillo
-            usandoAnillo = !usandoAnillo; 
+            temporizadorRecarga -= Time.deltaTime;
+        }
 
-            if (usandoAnillo)
+        // Activar el anillo (Pulsando Espacio)
+        if (tieneElAnillo && Input.GetKeyDown(KeyCode.Space) && temporizadorRecarga <= 0 && !usandoAnillo)
+        {
+            usandoAnillo = true;
+            temporizadorUso = duracionAnillo;
+            actuadorInteraccion.CambiarTransparencia(true); // Ordena al actuador
+            Debug.Log("¡Anillo activado! Eres invisible.");
+        }
+
+        // Desactivar el anillo cuando se acaba el tiempo
+        if (usandoAnillo)
+        {
+            temporizadorUso -= Time.deltaTime;
+            if (temporizadorUso <= 0)
             {
-                Debug.Log("Anillo activado. Frodo es invisible a la vista, pero emite olor.");
-            }
-            else
-            {
-                Debug.Log("Anillo desactivado.");
+                usandoAnillo = false;
+                temporizadorRecarga = tiempoRecarga; // Comienza el cooldown
+                actuadorInteraccion.CambiarTransparencia(false); // Ordena al actuador
+                Debug.Log("El efecto del anillo ha terminado. Recargando...");
             }
         }
     }
 
-    void ComprobarObjetivos()
+    void ComprobarSensores()
     {
-        // El cerebro pregunta al tacto si está tocando el anillo
-        if (!tieneElAnillo && sensorTacto != null && sensorTacto.TocarAnillo())
+        if (!tieneElAnillo && sensorTacto.TocarAnillo())
         {
-            RecogerAnillo();
+            tieneElAnillo = true;
+            actuadorInteraccion.CogerAnillo();
+            Debug.Log("¡Anillo recogido!");
         }
 
-        // El cerebro pregunta al tacto si está pisando la salida
-        if (tieneElAnillo && sensorTacto != null && sensorTacto.TocarSalida())
+        if (tieneElAnillo && sensorTacto.TocarSalida())
         {
-            Victoria();
-        }
-    }
-
-    void RecogerAnillo()
-    {
-        tieneElAnillo = true;           
-        Debug.Log("Anillo recogido. (Pulsa ESPACIO para usarlo)"); 
-        
-        // El cerebro ordena usar el tacto para agarrar el objeto
-        if (sensorTacto != null) sensorTacto.CogerAnillo(); 
-    }
-
-    void Victoria()
-    {
-        haEscapado = true;               
-        if (pantallaVictoria != null)
-        {
-            pantallaVictoria.SetActive(true);
+            GameManager.Instance.FrodoEscapa();
         }
     }
 }

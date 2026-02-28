@@ -1,53 +1,82 @@
 using UnityEngine;
-using UnityEngine.AI; 
+using UnityEngine.AI;
 
 public class SensorOidoOrco : MonoBehaviour
 {
-    [Header("Configuración de Audición")]
-    public Transform objetivoFrodo;         
-    public float rangoOido = 15f;           
-    public float umbralVelocidadRuido = 4.0f; // A partir de qué velocidad hace ruido (ajusta según tu Frodo)
+    [Header("Audición - Frodo")]
+    public Transform objetivoFrodo;
+    public float rangoOidoCaminar = 5f;       // Frodo caminando: ruido bajo, rango corto
+    public float rangoOidoCorrer = 15f;       // Frodo corriendo: ruido alto, rango largo
 
-    private NavMeshAgent agenteFrodo;       // Referencia física, no al script lógico
+    [Header("Audición - Otros Orcos")]
+    public float rangoOidoOrcoPersiguiendo = 12f;   // Un orco persiguiendo hace mucho ruido
+    public float rangoOidoOrcoPatrullando = 4f;     // Un orco patrullando hace poco ruido
+    public float umbralVelocidadPersecucion = 5f;   // Por encima de esta velocidad se considera "persiguiendo"
+
+    private CerebroFrodo cerebroFrodo;
+    private ActuadorMovimientoFrodo movimientoFrodo;
+    private CerebroOrco[] otrosOrcos;
 
     void Start()
     {
         if (objetivoFrodo != null)
         {
-            // Obtenemos el componente de navegación para medir su velocidad real
-            agenteFrodo = objetivoFrodo.GetComponent<NavMeshAgent>();
+            cerebroFrodo = objetivoFrodo.GetComponent<CerebroFrodo>();
+            movimientoFrodo = objetivoFrodo.GetComponent<ActuadorMovimientoFrodo>();
         }
+
+        otrosOrcos = FindObjectsOfType<CerebroOrco>();
     }
 
-    public bool OirFrodo(out Vector3 posicionRuido)
+    // Evalúa si percibe CUALQUIER ruido (Frodo moviéndose u otro Orco)
+    public bool OirRuido(out Vector3 posicionRuido)
     {
         posicionRuido = Vector3.zero;
 
-        if (objetivoFrodo == null) return false;
-
-        float distancia = Vector3.Distance(transform.position, objetivoFrodo.position);
-
-        // Si está fuera de rango, no oímos nada
-        if (distancia > rangoOido) return false;
-
-        // Calculamos la velocidad real física
-        float velocidadActual = 0f;
-
-        if (agenteFrodo != null)
+        // 1. Intentar escuchar a Frodo
+        if (objetivoFrodo != null && cerebroFrodo != null && movimientoFrodo != null)
         {
-            velocidadActual = agenteFrodo.velocity.magnitude;
+            float distanciaFrodo = Vector3.Distance(transform.position, objetivoFrodo.position);
+            float velocidadFrodo = movimientoFrodo.VelocidadActual();
+
+            // Frodo corriendo: se oye desde lejos
+            if (cerebroFrodo.estaCorriendo && distanciaFrodo < rangoOidoCorrer)
+            {
+                posicionRuido = objetivoFrodo.position;
+                return true;
+            }
+            // Frodo caminando (moviéndose pero sin correr): se oye de cerca
+            if (!cerebroFrodo.estaCorriendo && velocidadFrodo > 0.5f && distanciaFrodo < rangoOidoCaminar)
+            {
+                posicionRuido = objetivoFrodo.position;
+                return true;
+            }
+            // Frodo quieto: silencio total, no se detecta
         }
-        else
-        {
-            // Si Frodo no usa NavMesh (es humano puro), estimamos velocidad manual (opcional)
-            // velocidadActual = (objetivoFrodo.position - ultimaPosicion).magnitude / Time.deltaTime;
-        }
 
-        // Evaluación Física: ¿Se mueve lo suficientemente rápido para hacer ruido?
-        if (velocidadActual > umbralVelocidadRuido)
+        // 2. Escuchar a otros Orcos (Mecánica de confusión)
+        foreach (CerebroOrco compañero in otrosOrcos)
         {
-            posicionRuido = objetivoFrodo.position;
-            return true; 
+            if (compañero.gameObject == this.gameObject) continue;
+
+            float distanciaOrco = Vector3.Distance(transform.position, compañero.transform.position);
+            NavMeshAgent agenteCompañero = compañero.GetComponent<NavMeshAgent>();
+            if (agenteCompañero == null) continue;
+
+            float velocidadCompañero = agenteCompañero.velocity.magnitude;
+
+            // Orco persiguiendo (velocidad alta): mucho ruido, se oye desde lejos
+            if (velocidadCompañero > umbralVelocidadPersecucion && distanciaOrco < rangoOidoOrcoPersiguiendo)
+            {
+                posicionRuido = compañero.transform.position;
+                return true;
+            }
+            // Orco patrullando (velocidad baja pero moviéndose): poco ruido, solo de cerca
+            if (velocidadCompañero > 0.5f && velocidadCompañero <= umbralVelocidadPersecucion && distanciaOrco < rangoOidoOrcoPatrullando)
+            {
+                posicionRuido = compañero.transform.position;
+                return true;
+            }
         }
 
         return false;
