@@ -32,9 +32,6 @@ public class CerebroOrco : MonoBehaviour
 
     private bool frodoVisible;
 
-    // Controla que solo un agente realice la verificación del anillo simultáneamente
-    private static bool alguienComprobando = false;
-
     // Configura las referencias iniciales y establece un desfase aleatorio para las comprobaciones
     void Start()
     {
@@ -42,7 +39,8 @@ public class CerebroOrco : MonoBehaviour
         sensorVista = GetComponent<SensorVistaOrco>();
         sensorOido = GetComponent<SensorOidoOrco>();
 
-        temporizadorComprobacion = Random.Range(10f, tiempoEntreComprobaciones);
+        // Cada orco arranca con un desfase aleatorio para que no vayan todos a la vez
+        temporizadorComprobacion = Random.Range(20f, 60f);
     }
 
     // Gestiona el ciclo de vida principal y la detección de proximidad para la captura
@@ -70,17 +68,11 @@ public class CerebroOrco : MonoBehaviour
         if (estadoActual == EstadoOrco.PATRULLA)
         {
             temporizadorComprobacion -= Time.deltaTime;
-            if (temporizadorComprobacion <= 0 && !alguienComprobando)
+            if (temporizadorComprobacion <= 0)
             {
                 temporizadorComprobacion = tiempoEntreComprobaciones;
                 estadoPrevio = EstadoOrco.PATRULLA;
                 estadoActual = EstadoOrco.COMPROBAR_ANILLO;
-                alguienComprobando = true;
-            }
-            else if (temporizadorComprobacion <= 0)
-            {
-                // Establece un tiempo de espera breve si otro agente ya está comprobando
-                temporizadorComprobacion = Random.Range(5f, 15f);
             }
         }
 
@@ -99,9 +91,6 @@ public class CerebroOrco : MonoBehaviour
             actuador.SetUltimaPosicionConocida(objetivoFrodo.position);
             if (estadoActual != EstadoOrco.PERSECUCION)
             {
-                if (estadoActual == EstadoOrco.COMPROBAR_ANILLO)
-                    alguienComprobando = false;
-                
                 if (estadoActual == EstadoOrco.PATRULLA || estadoActual == EstadoOrco.BLOQUEAR_SALIDA)
                     estadoPrevio = estadoActual;
             }
@@ -155,9 +144,6 @@ public class CerebroOrco : MonoBehaviour
                 || estadoActual == EstadoOrco.BLOQUEAR_SALIDA
                 || estadoActual == EstadoOrco.COMPROBAR_ANILLO)
             {
-                if (estadoActual == EstadoOrco.COMPROBAR_ANILLO)
-                    alguienComprobando = false;
-                
                 if (estadoActual == EstadoOrco.PATRULLA || estadoActual == EstadoOrco.BLOQUEAR_SALIDA)
                     estadoPrevio = estadoActual;
                 
@@ -189,7 +175,6 @@ public class CerebroOrco : MonoBehaviour
             case EstadoOrco.COMPROBAR_ANILLO:
                 if (actuador.EjecutarComprobarAnillo())
                 {
-                    alguienComprobando = false;
                     estadoActual = sensorVista.AnilloEnPedestal()
                         ? EstadoOrco.PATRULLA
                         : EstadoOrco.BLOQUEAR_SALIDA;
