@@ -87,29 +87,6 @@ public class SensorVistaOrco : MonoBehaviour
         return elAnillo != null && elAnillo.gameObject.activeSelf;
     }
 
-    public bool VerCompañeroCerca(float rango = 5f)
-    {
-        foreach (CerebroOrco otro in todosOrcos)
-        {
-            if (otro.gameObject == this.gameObject) continue;
-
-            float distancia = Vector3.Distance(transform.position, otro.transform.position);
-            if (distancia < rango)
-            {
-                // FIX: Raycast desde los ojos
-                Vector3 posOjos = transform.position + Vector3.up * alturaOjosOrco;
-                Vector3 posOtro = otro.transform.position + Vector3.up * alturaOjosOrco;
-                Vector3 direccion = (posOtro - posOjos).normalized;
-                float dist = Vector3.Distance(posOjos, posOtro);
-
-                if (!Physics.Raycast(posOjos, direccion, dist, capasObstaculos))
-                {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
 
     void OnDrawGizmos()
     {

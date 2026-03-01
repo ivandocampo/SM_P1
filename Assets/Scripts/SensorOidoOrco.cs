@@ -25,7 +25,7 @@ public class SensorOidoOrco : MonoBehaviour
             movimientoFrodo = objetivoFrodo.GetComponent<ActuadorMovimientoFrodo>();
         }
 
-        otrosOrcos = FindObjectsOfType<CerebroOrco>();
+        otrosOrcos = FindObjectsByType<CerebroOrco>(FindObjectsSortMode.None);
     }
 
     // Evalúa si percibe CUALQUIER ruido (Frodo moviéndose u otro Orco)
@@ -65,16 +65,41 @@ public class SensorOidoOrco : MonoBehaviour
 
             float velocidadCompañero = agenteCompañero.velocity.magnitude;
 
-            // Orco persiguiendo (velocidad alta): mucho ruido, se oye desde lejos
+            // Orco buscando/persiguiendo (velocidad media-alta): se oye de lejos
             if (velocidadCompañero > umbralVelocidadPersecucion && distanciaOrco < rangoOidoOrcoPersiguiendo)
             {
                 posicionRuido = compañero.transform.position;
                 return true;
             }
-            // Orco patrullando (velocidad baja pero moviéndose): poco ruido, solo de cerca
-            if (velocidadCompañero > 0.5f && velocidadCompañero <= umbralVelocidadPersecucion && distanciaOrco < rangoOidoOrcoPatrullando)
+            // Orco buscando (velocidad media, por encima de patrulla): se oye de cerca
+            if (velocidadCompañero > 6.5f && velocidadCompañero <= umbralVelocidadPersecucion && distanciaOrco < rangoOidoOrcoPatrullando)
             {
                 posicionRuido = compañero.transform.position;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Solo detecta ruido de Frodo (ignora otros orcos)
+    public bool OirFrodo(out Vector3 posicionRuido)
+    {
+        posicionRuido = Vector3.zero;
+
+        if (objetivoFrodo != null && cerebroFrodo != null && movimientoFrodo != null)
+        {
+            float distanciaFrodo = Vector3.Distance(transform.position, objetivoFrodo.position);
+            float velocidadFrodo = movimientoFrodo.VelocidadActual();
+
+            if (cerebroFrodo.estaCorriendo && distanciaFrodo < rangoOidoCorrer)
+            {
+                posicionRuido = objetivoFrodo.position;
+                return true;
+            }
+            if (!cerebroFrodo.estaCorriendo && velocidadFrodo > 0.5f && distanciaFrodo < rangoOidoCaminar)
+            {
+                posicionRuido = objetivoFrodo.position;
                 return true;
             }
         }
