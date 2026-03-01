@@ -12,7 +12,7 @@ public class ActuadorMovimientoOrco : MonoBehaviour
     public Transform[] puntosPatrulla;
 
     [Header("Patrulla Bloqueo Salida")]
-    public Transform[] puntosBloqueoSalida;   // Asignar 2-3 waypoints cerca de la salida por orco
+    public Transform[] puntosBloqueoSalida;
 
     [Header("Puntos Clave")]
     public Transform pedestalAnillo;
@@ -38,12 +38,6 @@ public class ActuadorMovimientoOrco : MonoBehaviour
         ultimaPosicionConocida = posicion;
     }
 
-    // Llamado por CerebroOrco al entrar en INVESTIGACION para resetear el temporizador
-    public void ResetearInvestigacion()
-    {
-        temporizadorInvestigacion = 0f;
-    }
-
     public void EjecutarPatrulla()
     {
         agent.speed = velocidadPatrulla;
@@ -54,13 +48,17 @@ public class ActuadorMovimientoOrco : MonoBehaviour
             indicePatrulla = (indicePatrulla + 1) % puntosPatrulla.Length;
     }
 
-    public void EjecutarPersecucion()
+    // FIX Bug 2b: Recibe si está viendo a Frodo o no.
+    // Si lo ve, va a su posición real. Si no (período de gracia), va a la última conocida.
+    public void EjecutarPersecucion(bool viendoAFrodo)
     {
         agent.speed = velocidadPersecucion;
-        agent.destination = objetivoFrodo.position;
+        if (viendoAFrodo && objetivoFrodo != null)
+            agent.destination = objetivoFrodo.position;
+        else
+            agent.destination = ultimaPosicionConocida;
     }
 
-    // Devuelve true cuando termina de investigar (llegó + esperó 2s)
     public bool EjecutarInvestigacion()
     {
         agent.speed = velocidadAlerta;
@@ -75,28 +73,33 @@ public class ActuadorMovimientoOrco : MonoBehaviour
                 return true;
             }
         }
+        else
+        {
+            // Resetear temporizador si aún no ha llegado
+            temporizadorInvestigacion = 0f;
+        }
         return false;
     }
 
-    // Devuelve true cuando llega al pedestal
     public bool EjecutarComprobarAnillo()
     {
-        agent.speed = velocidadAlerta;
-        agent.destination = pedestalAnillo.position;
+        agent.speed = velocidadPatrulla;
+        if (pedestalAnillo != null)
+            agent.destination = pedestalAnillo.position;
         return !agent.pathPending && agent.remainingDistance < 2.0f;
     }
 
     public void EjecutarBloquearSalida()
     {
         agent.speed = velocidadAlerta;
-        
-        if (puntosBloqueoSalida.Length > 0)
+
+        if (puntosBloqueoSalida != null && puntosBloqueoSalida.Length > 0)
         {
             agent.destination = puntosBloqueoSalida[indiceBloqueo].position;
             if (!agent.pathPending && agent.remainingDistance < 0.5f)
                 indiceBloqueo = (indiceBloqueo + 1) % puntosBloqueoSalida.Length;
         }
-        else
+        else if (puntoSalida != null)
         {
             agent.destination = puntoSalida.position;
         }

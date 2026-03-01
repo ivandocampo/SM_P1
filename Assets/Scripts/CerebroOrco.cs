@@ -15,15 +15,18 @@ public class CerebroOrco : MonoBehaviour
     public Transform objetivoFrodo;
     public float distanciaAtaque = 1.2f;
 
-    [Header("Cooldown tras falsa alarma")]
-    public float cooldownFalsaAlarma = 5f;
+    [Header("Temporizadores")]
+    public float tiempoGraciaPersecucion = 2f;   // Segundos que sigue persiguiendo sin ver a Frodo
+    public float tiempoCooldownOido = 8f;         // Segundos que ignora ruidos tras falsa alarma
 
     private EstadoOrco estadoActual = EstadoOrco.PATRULLA;
     private EstadoOrco estadoPrevio = EstadoOrco.PATRULLA;
     private ActuadorMovimientoOrco actuador;
     private SensorVistaOrco sensorVista;
     private SensorOidoOrco sensorOido;
-    private float temporizadorCooldown = 0f;
+
+    private float temporizadorPersecucion = 0f;
+    private float cooldownOido = 0f;
 
     void Start()
     {
@@ -36,25 +39,26 @@ public class CerebroOrco : MonoBehaviour
     {
         if (!GameManager.Instance.PartidaActiva) return;
 
-        if (sensorVista.VerFrodo() && Vector3.Distance(transform.position, objetivoFrodo.position) < distanciaAtaque)
+        // Restar cooldowns
+        cooldownOido -= Time.deltaTime;
+
+        // FIX Bug 1: La captura es por distancia pura, no depende de la vista.
+        // Si el orco está tocando a Frodo, lo atrapa aunque esté de espaldas.
+        if (Vector3.Distance(transform.position, objetivoFrodo.position) < distanciaAtaque)
         {
             GameManager.Instance.FrodoCapturado();
             return;
         }
 
-        if (temporizadorCooldown > 0f)
-            temporizadorCooldown -= Time.deltaTime;
+        // FIX Bug 5: Comprobar si falta el anillo SIEMPRE, independientemente del oído.
+        // Así un ruido en el mismo frame no "tapa" la detección del pedestal vacío.
+        if (sensorVista.NoAnillo() && estadoActual == EstadoOrco.PATRULLA)
+        {
+            estadoActual = EstadoOrco.BLOQUEAR_SALIDA;
+        }
 
         DecidirEstado();
         EjecutarEstado();
-    }
-
-    void CambiarEstado(EstadoOrco nuevoEstado)
-    {
-        if (nuevoEstado == EstadoOrco.INVESTIGACION)
-            actuador.ResetearInvestigacion();
-
-        estadoActual = nuevoEstado;
     }
 
     void DecidirEstado()
@@ -63,26 +67,36 @@ public class CerebroOrco : MonoBehaviour
 
         if (sensorVista.VerFrodo())
         {
+            // Ve a Frodo: perseguir y resetear el temporizador de gracia
             actuador.SetUltimaPosicionConocida(objetivoFrodo.position);
-            CambiarEstado(EstadoOrco.PERSECUCION);
+            estadoActual = EstadoOrco.PERSECUCION;
+            temporizadorPersecucion = tiempoGraciaPersecucion;
         }
         else if (estadoActual == EstadoOrco.PERSECUCION)
         {
-            estadoPrevio = EstadoOrco.PATRULLA;
-            CambiarEstado(EstadoOrco.INVESTIGACION);
-        }
-        else if (temporizadorCooldown <= 0f && sensorOido.OirRuido(out origenRuido))
-        {
-            if (estadoActual == EstadoOrco.PATRULLA || estadoActual == EstadoOrco.BLOQUEAR_SALIDA)
+            // FIX Bug 2: No rendirse inmediatamente al perder la vista.
+            // Sigue persiguiendo hacia la última posición conocida durante unos segundos.
+            actuador.SetUltimaPosicionConocida(objetivoFrodo.position);
+            temporizadorPersecucion -= Time.deltaTime;
+            if (temporizadorPersecucion <= 0)
             {
-                actuador.SetUltimaPosicionConocida(origenRuido);
-                estadoPrevio = estadoActual;
-                CambiarEstado(EstadoOrco.INVESTIGACION);
+                // Se acabó el tiempo de gracia: pasa a investigar
+                estadoPrevio = EstadoOrco.PATRULLA;
+                estadoActual = EstadoOrco.INVESTIGACION;
             }
         }
-        else if (sensorVista.NoAnillo() && estadoActual == EstadoOrco.PATRULLA)
+        // FIX Bug 3: Respetar el cooldown del oído para evitar bucles entre orcos.
+        // FIX Bug 3b: Permitir investigar desde COMPROBAR_ANILLO también.
+        else if (cooldownOido <= 0 && sensorOido.OirRuido(out origenRuido))
         {
-            CambiarEstado(EstadoOrco.BLOQUEAR_SALIDA);
+            actuador.SetUltimaPosicionConocida(origenRuido);
+            if (estadoActual == EstadoOrco.PATRULLA 
+                || estadoActual == EstadoOrco.BLOQUEAR_SALIDA 
+                || estadoActual == EstadoOrco.COMPROBAR_ANILLO)
+            {
+                estadoPrevio = estadoActual;
+                estadoActual = EstadoOrco.INVESTIGACION;
+            }
         }
     }
 
@@ -95,7 +109,9 @@ public class CerebroOrco : MonoBehaviour
                 break;
 
             case EstadoOrco.PERSECUCION:
-                actuador.EjecutarPersecucion();
+                // FIX Bug 2b: Si lo ve, persigue su posición real.
+                // Si no lo ve (gracia), persigue la última posición conocida.
+                actuador.EjecutarPersecucion(sensorVista.VerFrodo());
                 break;
 
             case EstadoOrco.INVESTIGACION:
@@ -103,24 +119,24 @@ public class CerebroOrco : MonoBehaviour
                 {
                     if (sensorVista.VerCompañeroCerca())
                     {
-                        temporizadorCooldown = cooldownFalsaAlarma;
-                        CambiarEstado(estadoPrevio);
+                        // Falsa alarma: era un compañero
+                        estadoActual = estadoPrevio;
+                        // FIX Bug 3: Activar cooldown para no volver a investigar al mismo compañero
+                        cooldownOido = tiempoCooldownOido;
                     }
                     else
                     {
-                        CambiarEstado(EstadoOrco.COMPROBAR_ANILLO);
+                        // No ve a nadie: va a comprobar si el anillo sigue en su sitio
+                        estadoActual = EstadoOrco.COMPROBAR_ANILLO;
                     }
                 }
                 break;
 
             case EstadoOrco.COMPROBAR_ANILLO:
                 if (actuador.EjecutarComprobarAnillo())
-                {
-                    if (sensorVista.AnilloEnPedestal())
-                        CambiarEstado(EstadoOrco.PATRULLA);
-                    else
-                        CambiarEstado(EstadoOrco.BLOQUEAR_SALIDA);
-                }
+                    estadoActual = sensorVista.AnilloEnPedestal()
+                        ? EstadoOrco.PATRULLA
+                        : EstadoOrco.BLOQUEAR_SALIDA;
                 break;
 
             case EstadoOrco.BLOQUEAR_SALIDA:
