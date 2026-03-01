@@ -3,12 +3,13 @@ using UnityEngine;
 public class SensorOlfatoOrco : MonoBehaviour
 {
     [Header("Configuración de Olfato")]
-    public Transform objetivoFrodo;         // Referencia a la presa
-    public float rangoOlfatoBase = 3f;      // Distancia a la que lo huele de forma natural (muy cerca)
-    public float rangoOlfatoAnillo = 40f;   // Distancia a la que huele la magia del anillo (muy lejos)
+    public Transform objetivoFrodo;
+    public float rangoOlfatoBase = 3f;
+    public float rangoOlfatoAnillo = 40f;
 
-    private CerebroFrodo scriptFrodo;       // Enlace al objetivo para medir estímulos
+    private CerebroFrodo scriptFrodo;
 
+    // Establece el vínculo con el cerebro del objetivo para monitorizar sus estados
     void Start()
     {
         if (objetivoFrodo != null)
@@ -17,18 +18,21 @@ public class SensorOlfatoOrco : MonoBehaviour
         }
     }
 
+    // Calcula si el rastro del objetivo es perceptible según el uso del anillo
     public bool OlerFrodo()
     {
+        // Finaliza la comprobación si las referencias necesarias no están asignadas
         if (objetivoFrodo == null || scriptFrodo == null) return false;
 
+        // Mide la separación física entre el agente y el objetivo
         float distancia = Vector3.Distance(transform.position, objetivoFrodo.position);
 
-        // Si usa el anillo, el orco lo huele desde muchísimo más lejos
+        // Incrementa drásticamente el rango de detección si el objetivo activa el anillo
         if (scriptFrodo.usandoAnillo)
         {
             return distancia < rangoOlfatoAnillo;
         }
-        // Si NO usa el anillo, el orco solo lo huele si está casi pegado a él
+        // Aplica el rango de proximidad estándar cuando el objetivo no emplea magia
         else
         {
             return distancia < rangoOlfatoBase;

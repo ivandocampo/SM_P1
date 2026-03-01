@@ -18,7 +18,7 @@ public class CerebroOrco : MonoBehaviour
     [Header("Temporizadores")]
     public float tiempoGraciaPersecucion = 3f;
     public float tiempoBusqueda = 7f;
-    public float tiempoEntreComprobaciones = 30f; // Cada cuánto va a comprobar el anillo
+    public float tiempoEntreComprobaciones = 30f; 
 
     private EstadoOrco estadoActual = EstadoOrco.PATRULLA;
     private EstadoOrco estadoPrevio = EstadoOrco.PATRULLA;
@@ -32,37 +32,41 @@ public class CerebroOrco : MonoBehaviour
 
     private bool frodoVisible;
 
-    // Solo 1 orco comprueba el anillo a la vez
+    // Controla que solo un agente realice la verificación del anillo simultáneamente
     private static bool alguienComprobando = false;
 
+    // Configura las referencias iniciales y establece un desfase aleatorio para las comprobaciones
     void Start()
     {
         actuador = GetComponent<ActuadorMovimientoOrco>();
         sensorVista = GetComponent<SensorVistaOrco>();
         sensorOido = GetComponent<SensorOidoOrco>();
 
-        // Offset aleatorio para que no vayan todos a comprobar a la vez
         temporizadorComprobacion = Random.Range(10f, tiempoEntreComprobaciones);
     }
 
+    // Gestiona el ciclo de vida principal y la detección de proximidad para la captura
     void Update()
     {
         if (!GameManager.Instance.PartidaActiva) return;
 
+        // Almacena el estado de visibilidad actual del objetivo
         frodoVisible = sensorVista.VerFrodo();
 
+        // Finaliza la partida si el agente se encuentra dentro de la distancia de ataque
         if (Vector3.Distance(transform.position, objetivoFrodo.position) < distanciaAtaque)
         {
             GameManager.Instance.FrodoCapturado();
             return;
         }
 
+        // Cambia al estado de bloqueo si detecta visualmente la ausencia del anillo
         if (sensorVista.NoAnillo() && estadoActual == EstadoOrco.PATRULLA)
         {
             estadoActual = EstadoOrco.BLOQUEAR_SALIDA;
         }
 
-        // Comprobación periódica del anillo durante patrulla (solo 1 orco a la vez)
+        // Maneja la lógica de inspección periódica del pedestal durante la patrulla
         if (estadoActual == EstadoOrco.PATRULLA)
         {
             temporizadorComprobacion -= Time.deltaTime;
@@ -75,7 +79,7 @@ public class CerebroOrco : MonoBehaviour
             }
             else if (temporizadorComprobacion <= 0)
             {
-                // Otro ya está comprobando, esperar un poco más
+                // Establece un tiempo de espera breve si otro agente ya está comprobando
                 temporizadorComprobacion = Random.Range(5f, 15f);
             }
         }
@@ -84,11 +88,12 @@ public class CerebroOrco : MonoBehaviour
         EjecutarEstado();
     }
 
+    // Evalúa los estímulos sensoriales para determinar el comportamiento jerárquico
     void DecidirEstado()
     {
         Vector3 origenRuido;
 
-        // PRIORIDAD 1: VISTA — si ve a Frodo, perseguir SIEMPRE
+        // Prioridad máxima: Inicia la persecución inmediata si el objetivo es visible
         if (frodoVisible)
         {
             actuador.SetUltimaPosicionConocida(objetivoFrodo.position);
@@ -96,6 +101,7 @@ public class CerebroOrco : MonoBehaviour
             {
                 if (estadoActual == EstadoOrco.COMPROBAR_ANILLO)
                     alguienComprobando = false;
+                
                 if (estadoActual == EstadoOrco.PATRULLA || estadoActual == EstadoOrco.BLOQUEAR_SALIDA)
                     estadoPrevio = estadoActual;
             }
@@ -104,7 +110,7 @@ public class CerebroOrco : MonoBehaviour
             return;
         }
 
-        // PRIORIDAD 2: PERSECUCIÓN — gracia, solo oye a Frodo
+        // Mantiene la persecución activa basándose en rastros sonoros si se pierde la visión
         if (estadoActual == EstadoOrco.PERSECUCION)
         {
             temporizadorPersecucion -= Time.deltaTime;
@@ -115,6 +121,7 @@ public class CerebroOrco : MonoBehaviour
                 temporizadorPersecucion = tiempoGraciaPersecucion;
             }
 
+            // Transiciona a búsqueda si se agota el tiempo de gracia o llega al último rastro
             if (temporizadorPersecucion <= 0 || actuador.HaLlegado(1.5f))
             {
                 estadoActual = EstadoOrco.BUSQUEDA;
@@ -124,7 +131,7 @@ public class CerebroOrco : MonoBehaviour
             return;
         }
 
-        // PRIORIDAD 3: BÚSQUEDA — 7 segundos, 100% sorda
+        // Gestiona el estado de búsqueda intensiva durante un tiempo limitado
         if (estadoActual == EstadoOrco.BUSQUEDA)
         {
             temporizadorBusqueda -= Time.deltaTime;
@@ -139,7 +146,7 @@ public class CerebroOrco : MonoBehaviour
             return;
         }
 
-        // PRIORIDAD 4: OÍDO — solo Frodo activa búsqueda
+        // Reacciona a estímulos auditivos para iniciar una investigación desde estados pasivos
         if (sensorOido.OirFrodo(out origenRuido))
         {
             actuador.SetUltimaPosicionConocida(origenRuido);
@@ -150,8 +157,10 @@ public class CerebroOrco : MonoBehaviour
             {
                 if (estadoActual == EstadoOrco.COMPROBAR_ANILLO)
                     alguienComprobando = false;
+                
                 if (estadoActual == EstadoOrco.PATRULLA || estadoActual == EstadoOrco.BLOQUEAR_SALIDA)
                     estadoPrevio = estadoActual;
+                
                 estadoActual = EstadoOrco.BUSQUEDA;
                 temporizadorBusqueda = tiempoBusqueda;
                 actuador.IniciarBusqueda();
@@ -160,6 +169,7 @@ public class CerebroOrco : MonoBehaviour
         }
     }
 
+    // Invoca los métodos correspondientes del actuador según el estado activo
     void EjecutarEstado()
     {
         switch (estadoActual)

@@ -2,13 +2,13 @@ using UnityEngine;
 
 public class CerebroFrodo : MonoBehaviour
 {
-    // Estado perceptible por los sensores de los Orcos
+    // Define el estado del personaje para que sea detectable por los enemigos
     public bool estaCorriendo { get; private set; } = false;
     public bool usandoAnillo { get; private set; } = false;
 
     [Header("Magia del Anillo")]
-    public float duracionAnillo = 5f;        // Segundos que dura la invisibilidad
-    public float tiempoRecarga = 30f;        // Segundos que tarda en volver a usarse
+    public float duracionAnillo = 5f;        
+    public float tiempoRecarga = 30f;        
     private float temporizadorUso = 0f;
     private float temporizadorRecarga = 0f;
 
@@ -18,12 +18,13 @@ public class CerebroFrodo : MonoBehaviour
 
     private bool tieneElAnillo = false;
 
-    // Propiedades de solo lectura para la UI del anillo
+    // Proporciona datos de estado para la interfaz de usuario y sistemas externos
     public bool TieneElAnillo => tieneElAnillo;
     public bool AnilloListo => tieneElAnillo && !usandoAnillo && temporizadorRecarga <= 0;
-    public float ProgresoUso => usandoAnillo ? temporizadorUso / duracionAnillo : 0f;          // 1→0 mientras está activo
-    public float ProgresoRecarga => temporizadorRecarga > 0 ? 1f - (temporizadorRecarga / tiempoRecarga) : 1f; // 0→1 mientras recarga
+    public float ProgresoUso => usandoAnillo ? temporizadorUso / duracionAnillo : 0f;
+    public float ProgresoRecarga => temporizadorRecarga > 0 ? 1f - (temporizadorRecarga / tiempoRecarga) : 1f;
 
+    // Establece las referencias a los actuadores y sensores al iniciar
     void Start()
     {
         actuadorMovimiento = GetComponent<ActuadorMovimientoFrodo>();
@@ -31,8 +32,10 @@ public class CerebroFrodo : MonoBehaviour
         sensorTacto = GetComponent<SensorTactoFrodo>();
     }
 
+    // Coordina la actualización constante de la lógica de juego
     void Update()
     {
+        // Interrumpe la lógica si el estado global de la partida no es activo
         if (!GameManager.Instance.PartidaActiva) return;
 
         ManejarAnillo();
@@ -40,60 +43,73 @@ public class CerebroFrodo : MonoBehaviour
         ComprobarSensores();
     }
 
+    // Procesa las entradas del jugador para el movimiento relativo a la cámara
     void LeerInput()
     {
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
 
-        // Movimiento relativo a la cámara: "adelante" siempre es donde mira la cámara
+        // Calcula la orientación basada en la posición actual de la cámara
         Transform cam = Camera.main.transform;
         Vector3 adelante = cam.forward;
         Vector3 derecha = cam.right;
+        
+        // Aplana los vectores para evitar desplazamientos en el eje vertical
         adelante.y = 0f;
         derecha.y = 0f;
         adelante.Normalize();
         derecha.Normalize();
 
+        // Combina las direcciones para obtener el vector de movimiento final
         Vector3 direccion = (-adelante * v - derecha * h).normalized;
 
+        // Determina si el personaje debe correr basándose en la velocidad y el input
         estaCorriendo = Input.GetKey(KeyCode.LeftShift) && direccion.magnitude > 0.1f;
+        
+        // Envía la dirección final al actuador de movimiento
         actuadorMovimiento.Mover(direccion, estaCorriendo);
     }
 
-    // Controla los tiempos y ordena al actuador cambiar la visibilidad
+    // Administra los estados de invisibilidad y los tiempos de enfriamiento
     void ManejarAnillo()
     {
-        // Restar tiempo de recarga si está en cooldown
+        // Reduce el tiempo de espera para volver a usar el anillo
         if (!usandoAnillo && temporizadorRecarga > 0)
         {
             temporizadorRecarga -= Time.deltaTime;
         }
 
-        // Activar el anillo (Pulsando Espacio)
+        // Activa el efecto de invisibilidad si se cumplen los requisitos y se pulsa el comando
         if (tieneElAnillo && Input.GetKeyDown(KeyCode.Space) && temporizadorRecarga <= 0 && !usandoAnillo)
         {
             usandoAnillo = true;
             temporizadorUso = duracionAnillo;
-            actuadorInteraccion.CambiarTransparencia(true); // Ordena al actuador
+            
+            // Notifica al actuador visual que debe aplicar la transparencia
+            actuadorInteraccion.CambiarTransparencia(true);
             Debug.Log("¡Anillo activado! Eres invisible.");
         }
 
-        // Desactivar el anillo cuando se acaba el tiempo
+        // Gestiona el agotamiento del efecto una vez transcurrido el tiempo de uso
         if (usandoAnillo)
         {
             temporizadorUso -= Time.deltaTime;
             if (temporizadorUso <= 0)
             {
                 usandoAnillo = false;
-                temporizadorRecarga = tiempoRecarga; // Comienza el cooldown
-                actuadorInteraccion.CambiarTransparencia(false); // Ordena al actuador
+                temporizadorRecarga = tiempoRecarga;
+                
+                // Ordena al actuador restaurar la apariencia normal del personaje
+                actuadorInteraccion.CambiarTransparencia(false);
                 Debug.Log("El efecto del anillo ha terminado. Recargando...");
             }
         }
     }
 
+    // Evalúa la información de los sensores táctiles para interactuar con el entorno
     void ComprobarSensores()
     {
+        // Comprueba si el personaje ha recolectado el anillo
         if (!tieneElAnillo && sensorTacto.TocarAnillo())
         {
             tieneElAnillo = true;
@@ -101,6 +117,7 @@ public class CerebroFrodo : MonoBehaviour
             Debug.Log("¡Anillo recogido!");
         }
 
+        // Verifica si el personaje ha alcanzado la zona de salida con el objetivo cumplido
         if (tieneElAnillo && sensorTacto.TocarSalida())
         {
             GameManager.Instance.FrodoEscapa();

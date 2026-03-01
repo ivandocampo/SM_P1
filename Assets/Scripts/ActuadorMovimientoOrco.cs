@@ -28,27 +28,28 @@ public class ActuadorMovimientoOrco : MonoBehaviour
     private int indiceBloqueo = 0;
     private Vector3 ultimaPosicionConocida;
 
-    // Búsqueda activa
     private Vector3[] puntosBusqueda;
     private int indiceBusqueda = 0;
 
+    // Inicializa el componente de navegación al comenzar
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
     }
 
+    // Actualiza la referencia de la última ubicación donde se detectó al objetivo
     public void SetUltimaPosicionConocida(Vector3 posicion)
     {
         ultimaPosicionConocida = posicion;
     }
 
-    // Comprueba si el agente ha llegado a su destino
+    // Verifica si el agente ha alcanzado su destino actual dentro de un margen
     public bool HaLlegado(float margen = 1.0f)
     {
         return !agent.pathPending && agent.remainingDistance < margen;
     }
 
-    // ==================== PATRULLA ====================
+    // Gestiona el movimiento cíclico entre los puntos de patrulla establecidos
     public void EjecutarPatrulla()
     {
         agent.speed = velocidadPatrulla;
@@ -59,7 +60,7 @@ public class ActuadorMovimientoOrco : MonoBehaviour
             indicePatrulla = (indicePatrulla + 1) % puntosPatrulla.Length;
     }
 
-    // ==================== PERSECUCIÓN ====================
+    // Dirige al agente hacia la posición actual del objetivo o su último rastro
     public void EjecutarPersecucion(bool viendoAFrodo)
     {
         agent.speed = velocidadPersecucion;
@@ -69,10 +70,10 @@ public class ActuadorMovimientoOrco : MonoBehaviour
             agent.destination = ultimaPosicionConocida;
     }
 
-    // ==================== BÚSQUEDA ACTIVA ====================
     private float tiempoAtascado = 0f;
     private Vector3 posicionAnterior;
 
+    // Calcula una serie de puntos aleatorios cercanos para iniciar el rastreo
     public void IniciarBusqueda()
     {
         puntosBusqueda = new Vector3[puntosBusquedaMax];
@@ -86,6 +87,7 @@ public class ActuadorMovimientoOrco : MonoBehaviour
         }
     }
 
+    // Controla el desplazamiento entre los puntos de inspección generados
     public void EjecutarBusqueda()
     {
         agent.speed = velocidadAlerta;
@@ -94,7 +96,7 @@ public class ActuadorMovimientoOrco : MonoBehaviour
 
         agent.destination = puntosBusqueda[indiceBusqueda];
 
-        // Detección de atasco: si lleva 2s casi sin moverse, saltar al siguiente punto
+        // Cambia al siguiente punto si detecta que el agente no logra avanzar
         if (Vector3.Distance(transform.position, posicionAnterior) < 0.3f)
         {
             tiempoAtascado += Time.deltaTime;
@@ -110,19 +112,21 @@ public class ActuadorMovimientoOrco : MonoBehaviour
             posicionAnterior = transform.position;
         }
 
+        // Avanza en la lista de puntos al llegar a cada destino individual
         if (!agent.pathPending && agent.remainingDistance < 1.5f)
         {
             indiceBusqueda++;
             tiempoAtascado = 0f;
         }
 
+        // Reinicia el ciclo de búsqueda si se han visitado todos los puntos
         if (indiceBusqueda >= puntosBusqueda.Length)
         {
             IniciarBusqueda();
         }
     }
 
-    // Genera un punto aleatorio que sea ALCANZABLE por el NavMesh
+    // Busca una coordenada válida y accesible dentro de la malla de navegación
     Vector3 GenerarPuntoAlcanzable(Vector3 centro, float radio)
     {
         for (int i = 0; i < 15; i++)
@@ -133,13 +137,13 @@ public class ActuadorMovimientoOrco : MonoBehaviour
             NavMeshHit hit;
             if (NavMesh.SamplePosition(puntoRandom, out hit, 2f, NavMesh.AllAreas))
             {
-                // Comprobar que no está pegado a una pared
+                // Descarta puntos que se encuentren demasiado próximos a obstáculos
                 if (NavMesh.FindClosestEdge(hit.position, out NavMeshHit edgeHit, NavMesh.AllAreas))
                 {
-                    if (edgeHit.distance < 0.8f) continue; // Demasiado cerca de pared, intentar otro
+                    if (edgeHit.distance < 0.8f) continue;
                 }
 
-                // Comprobar que hay un camino completo hasta ahí
+                // Asegura que exista una ruta completa y válida hasta el punto generado
                 NavMeshPath path = new NavMeshPath();
                 if (agent.CalculatePath(hit.position, path) && path.status == NavMeshPathStatus.PathComplete)
                 {
@@ -150,7 +154,7 @@ public class ActuadorMovimientoOrco : MonoBehaviour
         return centro;
     }
 
-    // ==================== COMPROBAR ANILLO ====================
+    // Dirige al agente al pedestal para verificar la presencia del objeto
     public bool EjecutarComprobarAnillo()
     {
         agent.speed = velocidadAlerta;
@@ -159,7 +163,7 @@ public class ActuadorMovimientoOrco : MonoBehaviour
         return !agent.pathPending && agent.remainingDistance < 2.0f;
     }
 
-    // ==================== BLOQUEAR SALIDA ====================
+    // Desplaza al agente hacia la zona de salida para interceptar al objetivo
     public void EjecutarBloquearSalida()
     {
         agent.speed = velocidadAlerta;

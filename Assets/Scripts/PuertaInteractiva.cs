@@ -3,7 +3,7 @@ using UnityEngine;
 public class PuertaInteractiva : MonoBehaviour
 {
     [Header("Configuración de la Puerta")]
-    public float speed = 150f; // Importante: pon un valor alto (ej: 150) porque ahora son grados por segundo
+    public float speed = 150f; 
     public float anguloAbierta = 270f; 
     private float anguloCerrada; 
 
@@ -12,24 +12,28 @@ public class PuertaInteractiva : MonoBehaviour
     private Transform puertaTransform;
     private float anguloObjetivo;
 
+    // Registra la rotación inicial y la referencia al objeto raíz de la puerta
     void Start()
     {
         puertaTransform = transform.parent;
-        // Guardamos el ángulo inicial tal y como esté en el mapa para que vuelva a su sitio exacto
+        
+        // Almacena el ángulo de cierre basado en la orientación original en la escena
         anguloCerrada = puertaTransform.localEulerAngles.y; 
         anguloObjetivo = anguloCerrada;
     }
 
+    // Gestiona la interacción del usuario y ejecuta la animación de rotación
     void Update()
     {
-        // Detectar pulsación de X solo si Frodo está en la zona
+        // Detecta la pulsación de la tecla de interacción si el personaje está en el rango
         if (frodoCerca && Input.GetKeyDown(KeyCode.X))
         {
-            estaAbierta = !estaAbierta; // Cambia el estado (si estaba abierta se cierra y viceversa)
+            // Invierte el estado actual de la puerta y actualiza el ángulo de destino
+            estaAbierta = !estaAbierta; 
             anguloObjetivo = estaAbierta ? anguloAbierta : anguloCerrada;
         }
 
-        // Rotar suavemente la puerta hacia el ángulo que toque en este momento
+        // Realiza una rotación progresiva hacia el ángulo objetivo definido
         Quaternion rotacionObjetivo = Quaternion.Euler(0, anguloObjetivo, 0);
         puertaTransform.localRotation = Quaternion.RotateTowards(
             puertaTransform.localRotation, 
@@ -38,6 +42,7 @@ public class PuertaInteractiva : MonoBehaviour
         );
     }
 
+    // Activa la posibilidad de interacción cuando el personaje entra en el área
     void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
@@ -46,6 +51,7 @@ public class PuertaInteractiva : MonoBehaviour
         }
     }
 
+    // Desactiva la posibilidad de interacción cuando el personaje sale del área
     void OnTriggerExit(Collider other)
     {
         if (other.CompareTag("Player"))
