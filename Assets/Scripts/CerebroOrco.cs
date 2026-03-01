@@ -5,8 +5,8 @@ public class CerebroOrco : MonoBehaviour
     public enum EstadoOrco
     {
         PATRULLA,
-        INVESTIGACION,
         PERSECUCION,
+        BUSQUEDA,
         COMPROBAR_ANILLO,
         BLOQUEAR_SALIDA
     }
@@ -16,8 +16,8 @@ public class CerebroOrco : MonoBehaviour
     public float distanciaAtaque = 1.2f;
 
     [Header("Temporizadores")]
-    public float tiempoGraciaPersecucion = 2f;   // Segundos que sigue persiguiendo sin ver a Frodo
-    public float tiempoCooldownOido = 8f;         // Segundos que ignora ruidos tras falsa alarma
+    public float tiempoGraciaPersecucion = 3f;
+    public float tiempoBusqueda = 10f;
 
     private EstadoOrco estadoActual = EstadoOrco.PATRULLA;
     private EstadoOrco estadoPrevio = EstadoOrco.PATRULLA;
@@ -26,7 +26,7 @@ public class CerebroOrco : MonoBehaviour
     private SensorOidoOrco sensorOido;
 
     private float temporizadorPersecucion = 0f;
-    private float cooldownOido = 0f;
+    private float temporizadorBusqueda = 0f;
 
     void Start()
     {
@@ -39,19 +39,12 @@ public class CerebroOrco : MonoBehaviour
     {
         if (!GameManager.Instance.PartidaActiva) return;
 
-        // Restar cooldowns
-        cooldownOido -= Time.deltaTime;
-
-        // FIX Bug 1: La captura es por distancia pura, no depende de la vista.
-        // Si el orco está tocando a Frodo, lo atrapa aunque esté de espaldas.
         if (Vector3.Distance(transform.position, objetivoFrodo.position) < distanciaAtaque)
         {
             GameManager.Instance.FrodoCapturado();
             return;
         }
 
-        // FIX Bug 5: Comprobar si falta el anillo SIEMPRE, independientemente del oído.
-        // Así un ruido en el mismo frame no "tapa" la detección del pedestal vacío.
         if (sensorVista.NoAnillo() && estadoActual == EstadoOrco.PATRULLA)
         {
             estadoActual = EstadoOrco.BLOQUEAR_SALIDA;
@@ -65,38 +58,100 @@ public class CerebroOrco : MonoBehaviour
     {
         Vector3 origenRuido;
 
+        // =============================================
+        // PRIORIDAD 1: VISTA — si ve a Frodo, perseguir SIEMPRE
+        // =============================================
         if (sensorVista.VerFrodo())
         {
-            // Ve a Frodo: perseguir y resetear el temporizador de gracia
             actuador.SetUltimaPosicionConocida(objetivoFrodo.position);
+            if (estadoActual != EstadoOrco.PERSECUCION)
+                estadoPrevio = estadoActual;
             estadoActual = EstadoOrco.PERSECUCION;
             temporizadorPersecucion = tiempoGraciaPersecucion;
+            return;
         }
-        else if (estadoActual == EstadoOrco.PERSECUCION)
+
+        // =============================================
+        // PRIORIDAD 2: PERSECUCIÓN — gracia corriendo al último sitio
+        // =============================================
+        if (estadoActual == EstadoOrco.PERSECUCION)
         {
-            // FIX Bug 2: No rendirse inmediatamente al perder la vista.
-            // Sigue persiguiendo hacia la última posición conocida durante unos segundos.
-            actuador.SetUltimaPosicionConocida(objetivoFrodo.position);
             temporizadorPersecucion -= Time.deltaTime;
-            if (temporizadorPersecucion <= 0)
+
+            // Si oye algo durante la gracia, actualiza destino y resetea
+            if (sensorOido.OirRuido(out origenRuido))
             {
-                // Se acabó el tiempo de gracia: pasa a investigar
-                estadoPrevio = EstadoOrco.PATRULLA;
-                estadoActual = EstadoOrco.INVESTIGACION;
+                actuador.SetUltimaPosicionConocida(origenRuido);
+                temporizadorPersecucion = tiempoGraciaPersecucion;
             }
+
+            // Gracia acabada O ya llegó al último sitio → búsqueda inmediata
+            if (temporizadorPersecucion <= 0 || actuador.HaLlegado(1.5f))
+            {
+                estadoActual = EstadoOrco.BUSQUEDA;
+                temporizadorBusqueda = tiempoBusqueda;
+                actuador.IniciarBusqueda();
+            }
+            return;
         }
-        // FIX Bug 3: Respetar el cooldown del oído para evitar bucles entre orcos.
-        // FIX Bug 3b: Permitir investigar desde COMPROBAR_ANILLO también.
-        else if (cooldownOido <= 0 && sensorOido.OirRuido(out origenRuido))
+
+        // =============================================
+        // PRIORIDAD 3: BÚSQUEDA — explorando la zona
+        // =============================================
+        if (estadoActual == EstadoOrco.BUSQUEDA)
+        {
+            temporizadorBusqueda -= Time.deltaTime;
+
+            // Si ve a un compañero durante la búsqueda, falsa alarma
+            if (sensorVista.VerCompañeroCerca())
+            {
+                estadoActual = estadoPrevio;
+                return;
+            }
+
+            // Oye cualquier ruido → actualiza posición conocida (nuevos puntos se generarán al llegar al actual)
+            Vector3 origenRuidoBusqueda;
+            if (sensorOido.OirRuido(out origenRuidoBusqueda))
+            {
+                actuador.SetUltimaPosicionConocida(origenRuidoBusqueda);
+
+                // Solo ruido fuerte (correr) resetea el timer
+                Vector3 dummy;
+                if (sensorOido.OirRuidoFuerte(out dummy))
+                {
+                    temporizadorBusqueda = tiempoBusqueda;
+                }
+            }
+
+            if (temporizadorBusqueda <= 0)
+            {
+                if (estadoPrevio == EstadoOrco.BLOQUEAR_SALIDA)
+                    estadoActual = EstadoOrco.BLOQUEAR_SALIDA;
+                else
+                    estadoActual = EstadoOrco.COMPROBAR_ANILLO;
+            }
+            return;
+        }
+
+        // =============================================
+        // PRIORIDAD 4: OÍDO — reactivo desde otros estados
+        // =============================================
+        if (sensorOido.OirRuido(out origenRuido))
         {
             actuador.SetUltimaPosicionConocida(origenRuido);
-            if (estadoActual == EstadoOrco.PATRULLA 
-                || estadoActual == EstadoOrco.BLOQUEAR_SALIDA 
+
+            if (estadoActual == EstadoOrco.PATRULLA
+                || estadoActual == EstadoOrco.BLOQUEAR_SALIDA
                 || estadoActual == EstadoOrco.COMPROBAR_ANILLO)
             {
-                estadoPrevio = estadoActual;
-                estadoActual = EstadoOrco.INVESTIGACION;
+                // Solo guardar estadoPrevio si es un estado "base" (no COMPROBAR_ANILLO)
+                if (estadoActual != EstadoOrco.COMPROBAR_ANILLO)
+                    estadoPrevio = estadoActual;
+                estadoActual = EstadoOrco.BUSQUEDA;
+                temporizadorBusqueda = tiempoBusqueda;
+                actuador.IniciarBusqueda();
             }
+            return;
         }
     }
 
@@ -109,27 +164,11 @@ public class CerebroOrco : MonoBehaviour
                 break;
 
             case EstadoOrco.PERSECUCION:
-                // FIX Bug 2b: Si lo ve, persigue su posición real.
-                // Si no lo ve (gracia), persigue la última posición conocida.
                 actuador.EjecutarPersecucion(sensorVista.VerFrodo());
                 break;
 
-            case EstadoOrco.INVESTIGACION:
-                if (actuador.EjecutarInvestigacion())
-                {
-                    if (sensorVista.VerCompañeroCerca())
-                    {
-                        // Falsa alarma: era un compañero
-                        estadoActual = estadoPrevio;
-                        // FIX Bug 3: Activar cooldown para no volver a investigar al mismo compañero
-                        cooldownOido = tiempoCooldownOido;
-                    }
-                    else
-                    {
-                        // No ve a nadie: va a comprobar si el anillo sigue en su sitio
-                        estadoActual = EstadoOrco.COMPROBAR_ANILLO;
-                    }
-                }
+            case EstadoOrco.BUSQUEDA:
+                actuador.EjecutarBusqueda();
                 break;
 
             case EstadoOrco.COMPROBAR_ANILLO:

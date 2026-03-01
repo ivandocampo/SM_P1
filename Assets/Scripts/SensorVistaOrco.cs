@@ -22,7 +22,7 @@ public class SensorVistaOrco : MonoBehaviour
         {
             posicionOriginalAnillo = elAnillo.position;
         }
-        todosOrcos = FindObjectsOfType<CerebroOrco>();
+        todosOrcos = FindObjectsByType<CerebroOrco>(FindObjectsSortMode.None);
     }
 
     public bool VerFrodo()
@@ -109,5 +109,35 @@ public class SensorVistaOrco : MonoBehaviour
             }
         }
         return false;
+    }
+
+    void OnDrawGizmos()
+    {
+        // Cono de visión: verde normal, rojo si ve a Frodo
+        bool veFrodo = Application.isPlaying && VerFrodo();
+        Gizmos.color = veFrodo ? Color.red : Color.green;
+
+        Vector3 posOjos = transform.position + Vector3.up * alturaOjosOrco;
+
+        // Línea frontal
+        Gizmos.DrawRay(posOjos, transform.forward * rangoVision);
+
+        // Bordes del cono
+        Vector3 bordeIzq = Quaternion.Euler(0, -anguloVision, 0) * transform.forward;
+        Vector3 bordeDer = Quaternion.Euler(0, anguloVision, 0) * transform.forward;
+        Gizmos.DrawRay(posOjos, bordeIzq * rangoVision);
+        Gizmos.DrawRay(posOjos, bordeDer * rangoVision);
+
+        // Arco
+        int segmentos = 20;
+        Vector3 puntoAnterior = posOjos + bordeIzq * rangoVision;
+        for (int i = 1; i <= segmentos; i++)
+        {
+            float angulo = Mathf.Lerp(-anguloVision, anguloVision, i / (float)segmentos);
+            Vector3 dir = Quaternion.Euler(0, angulo, 0) * transform.forward;
+            Vector3 puntoActual = posOjos + dir * rangoVision;
+            Gizmos.DrawLine(puntoAnterior, puntoActual);
+            puntoAnterior = puntoActual;
+        }
     }
 }
