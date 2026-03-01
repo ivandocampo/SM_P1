@@ -18,6 +18,7 @@ public class CerebroOrco : MonoBehaviour
     [Header("Temporizadores")]
     public float tiempoGraciaPersecucion = 3f;
     public float tiempoBusqueda = 10f;
+    public float tiempoCooldownOido = 10f;    // Segundos que ignora ruidos tras falsa alarma
 
     private EstadoOrco estadoActual = EstadoOrco.PATRULLA;
     private EstadoOrco estadoPrevio = EstadoOrco.PATRULLA;
@@ -27,6 +28,10 @@ public class CerebroOrco : MonoBehaviour
 
     private float temporizadorPersecucion = 0f;
     private float temporizadorBusqueda = 0f;
+    private float cooldownOido = 0f;
+
+    // Cache de sensores para no llamar dos veces por frame
+    private bool frodoVisible;
 
     void Start()
     {
@@ -38,6 +43,12 @@ public class CerebroOrco : MonoBehaviour
     void Update()
     {
         if (!GameManager.Instance.PartidaActiva) return;
+
+        // Restar cooldowns
+        cooldownOido -= Time.deltaTime;
+
+        // FIX Problema 3: Una sola llamada a VerFrodo() por frame
+        frodoVisible = sensorVista.VerFrodo();
 
         if (Vector3.Distance(transform.position, objetivoFrodo.position) < distanciaAtaque)
         {
@@ -61,7 +72,7 @@ public class CerebroOrco : MonoBehaviour
         // =============================================
         // PRIORIDAD 1: VISTA — si ve a Frodo, perseguir SIEMPRE
         // =============================================
-        if (sensorVista.VerFrodo())
+        if (frodoVisible)
         {
             actuador.SetUltimaPosicionConocida(objetivoFrodo.position);
             if (estadoActual != EstadoOrco.PERSECUCION)
@@ -106,10 +117,12 @@ public class CerebroOrco : MonoBehaviour
             if (sensorVista.VerCompañeroCerca())
             {
                 estadoActual = estadoPrevio;
+                // FIX Problema 1: Activar cooldown para no investigar al mismo compañero
+                cooldownOido = tiempoCooldownOido;
                 return;
             }
 
-            // Oye cualquier ruido → actualiza posición conocida (nuevos puntos se generarán al llegar al actual)
+            // Oye cualquier ruido → actualiza posición conocida
             Vector3 origenRuidoBusqueda;
             if (sensorOido.OirRuido(out origenRuidoBusqueda))
             {
@@ -136,7 +149,8 @@ public class CerebroOrco : MonoBehaviour
         // =============================================
         // PRIORIDAD 4: OÍDO — reactivo desde otros estados
         // =============================================
-        if (sensorOido.OirRuido(out origenRuido))
+        // FIX Problema 1: Respetar el cooldown tras falsa alarma
+        if (cooldownOido <= 0 && sensorOido.OirRuido(out origenRuido))
         {
             actuador.SetUltimaPosicionConocida(origenRuido);
 
@@ -144,7 +158,6 @@ public class CerebroOrco : MonoBehaviour
                 || estadoActual == EstadoOrco.BLOQUEAR_SALIDA
                 || estadoActual == EstadoOrco.COMPROBAR_ANILLO)
             {
-                // Solo guardar estadoPrevio si es un estado "base" (no COMPROBAR_ANILLO)
                 if (estadoActual != EstadoOrco.COMPROBAR_ANILLO)
                     estadoPrevio = estadoActual;
                 estadoActual = EstadoOrco.BUSQUEDA;
@@ -164,7 +177,8 @@ public class CerebroOrco : MonoBehaviour
                 break;
 
             case EstadoOrco.PERSECUCION:
-                actuador.EjecutarPersecucion(sensorVista.VerFrodo());
+                // FIX Problema 3: Usa la variable cacheada en vez de llamar otra vez
+                actuador.EjecutarPersecucion(frodoVisible);
                 break;
 
             case EstadoOrco.BUSQUEDA:
