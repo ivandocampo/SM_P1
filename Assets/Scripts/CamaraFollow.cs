@@ -14,8 +14,13 @@ public class CamaraFollow : MonoBehaviour
     public float rotxInicial = 45f;
     public float rotyInicial = 180f;
 
+    [Header("Vista Cenital (Tab para alternar)")]
+    public float distanciaCenital = 40f;     // Distancia de la cámara en vista cenital
+    public float anguloCenital = 75f;        // Ángulo desde arriba (90 = recto, 75 = ligeramente inclinada)
+
     private float rotX = 45f;
     private float rotY = 0f;
+    private bool vistaCenital = false;
 
     void Start()
     {
@@ -25,6 +30,22 @@ public class CamaraFollow : MonoBehaviour
 
     void LateUpdate()
     {
+        if (Input.GetKeyDown(KeyCode.Tab))
+        {
+            vistaCenital = !vistaCenital;
+        }
+
+        if (vistaCenital)
+        {
+            if (!target) return;
+            // Sigue a Frodo desde arriba con un ligero ángulo
+            Quaternion rotCenital = Quaternion.Euler(anguloCenital, rotY, 0);
+            transform.position = target.position + rotCenital * new Vector3(0, 0, -distanciaCenital);
+            transform.LookAt(target.position);
+            return;
+        }
+
+        // Vista normal: sigue a Frodo
         if (!target) return;
 
         if (Input.GetMouseButton(1))

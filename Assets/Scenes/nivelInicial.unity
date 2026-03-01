@@ -493,6 +493,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CerebroOrco
   objetivoFrodo: {fileID: 135324210}
   distanciaAtaque: 1.2
+  cooldownFalsaAlarma: 5
 --- !u!195 &23124702
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -529,11 +530,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SensorVistaOrco
   objetivoFrodo: {fileID: 135324210}
   elAnillo: {fileID: 458616568}
-  rangoVision: 10
-  anguloVision: 45
-  capasVision:
+  rangoVision: 15
+  anguloVision: 60
+  capasObstaculos:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 1
 --- !u!114 &23124705
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -549,6 +550,9 @@ MonoBehaviour:
   objetivoFrodo: {fileID: 135324210}
   rangoOidoCaminar: 5
   rangoOidoCorrer: 15
+  rangoOidoOrcoPersiguiendo: 12
+  rangoOidoOrcoPatrullando: 4
+  umbralVelocidadPersecucion: 5
 --- !u!136 &23124706
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -663,6 +667,7 @@ MonoBehaviour:
   - {fileID: 2092791913}
   - {fileID: 446625824}
   - {fileID: 1490209287}
+  puntosBloqueoSalida: []
   pedestalAnillo: {fileID: 458616568}
   puntoSalida: {fileID: 599910990}
   objetivoFrodo: {fileID: 135324210}
@@ -5846,6 +5851,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CerebroOrco
   objetivoFrodo: {fileID: 135324210}
   distanciaAtaque: 1.2
+  cooldownFalsaAlarma: 5
 --- !u!195 &361772878
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -5882,11 +5888,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SensorVistaOrco
   objetivoFrodo: {fileID: 135324210}
   elAnillo: {fileID: 458616568}
-  rangoVision: 10
-  anguloVision: 45
-  capasVision:
+  rangoVision: 15
+  anguloVision: 60
+  capasObstaculos:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 1
 --- !u!114 &361772881
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5902,6 +5908,9 @@ MonoBehaviour:
   objetivoFrodo: {fileID: 135324210}
   rangoOidoCaminar: 5
   rangoOidoCorrer: 15
+  rangoOidoOrcoPersiguiendo: 12
+  rangoOidoOrcoPatrullando: 4
+  umbralVelocidadPersecucion: 5
 --- !u!136 &361772882
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -6016,6 +6025,7 @@ MonoBehaviour:
   - {fileID: 1304087655}
   - {fileID: 1417041507}
   - {fileID: 2125961013}
+  puntosBloqueoSalida: []
   pedestalAnillo: {fileID: 458616568}
   puntoSalida: {fileID: 599910990}
   objetivoFrodo: {fileID: 135324210}
@@ -23272,6 +23282,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CerebroOrco
   objetivoFrodo: {fileID: 135324210}
   distanciaAtaque: 1.2
+  cooldownFalsaAlarma: 5
 --- !u!195 &1397636005
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -23308,11 +23319,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SensorVistaOrco
   objetivoFrodo: {fileID: 135324210}
   elAnillo: {fileID: 458616568}
-  rangoVision: 10
-  anguloVision: 45
-  capasVision:
+  rangoVision: 15
+  anguloVision: 60
+  capasObstaculos:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 1
 --- !u!114 &1397636008
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -23328,6 +23339,9 @@ MonoBehaviour:
   objetivoFrodo: {fileID: 135324210}
   rangoOidoCaminar: 5
   rangoOidoCorrer: 15
+  rangoOidoOrcoPersiguiendo: 12
+  rangoOidoOrcoPatrullando: 4
+  umbralVelocidadPersecucion: 5
 --- !u!136 &1397636009
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -23442,6 +23456,7 @@ MonoBehaviour:
   - {fileID: 1470651046}
   - {fileID: 1077624272}
   - {fileID: 981605686}
+  puntosBloqueoSalida: []
   pedestalAnillo: {fileID: 458616568}
   puntoSalida: {fileID: 599910990}
   objetivoFrodo: {fileID: 135324210}
@@ -28454,6 +28469,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CerebroOrco
   objetivoFrodo: {fileID: 135324210}
   distanciaAtaque: 1.2
+  cooldownFalsaAlarma: 5
 --- !u!195 &1693090676
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -28490,11 +28506,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SensorVistaOrco
   objetivoFrodo: {fileID: 135324210}
   elAnillo: {fileID: 458616568}
-  rangoVision: 10
-  anguloVision: 45
-  capasVision:
+  rangoVision: 15
+  anguloVision: 60
+  capasObstaculos:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 1
 --- !u!114 &1693090679
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -28510,6 +28526,9 @@ MonoBehaviour:
   objetivoFrodo: {fileID: 135324210}
   rangoOidoCaminar: 5
   rangoOidoCorrer: 15
+  rangoOidoOrcoPersiguiendo: 12
+  rangoOidoOrcoPatrullando: 4
+  umbralVelocidadPersecucion: 5
 --- !u!136 &1693090680
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -28624,6 +28643,7 @@ MonoBehaviour:
   - {fileID: 1602148630}
   - {fileID: 1901906711}
   - {fileID: 1927349343}
+  puntosBloqueoSalida: []
   pedestalAnillo: {fileID: 458616568}
   puntoSalida: {fileID: 599910990}
   objetivoFrodo: {fileID: 135324210}
@@ -34596,13 +34616,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2048561911}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.015256598, y: 0.81444496, z: -0.57969564, w: 0.019992778}
-  m_LocalPosition: {x: 0.81331205, y: 57.10331, z: 21.473696}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2048561916
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -34625,6 +34645,8 @@ MonoBehaviour:
   zoomMax: 20
   rotxInicial: 45
   rotyInicial: 180
+  distanciaCenital: 50
+  anguloCenital: 75
 --- !u!1 &2055282308
 GameObject:
   m_ObjectHideFlags: 0
@@ -35653,6 +35675,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CerebroOrco
   objetivoFrodo: {fileID: 135324210}
   distanciaAtaque: 1.2
+  cooldownFalsaAlarma: 5
 --- !u!195 &2135347911
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -35689,11 +35712,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SensorVistaOrco
   objetivoFrodo: {fileID: 135324210}
   elAnillo: {fileID: 458616568}
-  rangoVision: 10
-  anguloVision: 45
-  capasVision:
+  rangoVision: 15
+  anguloVision: 60
+  capasObstaculos:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 1
 --- !u!114 &2135347914
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -35709,6 +35732,9 @@ MonoBehaviour:
   objetivoFrodo: {fileID: 135324210}
   rangoOidoCaminar: 5
   rangoOidoCorrer: 15
+  rangoOidoOrcoPersiguiendo: 12
+  rangoOidoOrcoPatrullando: 4
+  umbralVelocidadPersecucion: 5
 --- !u!136 &2135347915
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -35823,6 +35849,7 @@ MonoBehaviour:
   - {fileID: 857960238}
   - {fileID: 1258118015}
   - {fileID: 1815809954}
+  puntosBloqueoSalida: []
   pedestalAnillo: {fileID: 458616568}
   puntoSalida: {fileID: 599910990}
   objetivoFrodo: {fileID: 135324210}

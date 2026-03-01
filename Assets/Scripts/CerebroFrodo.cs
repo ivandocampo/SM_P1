@@ -44,7 +44,17 @@ public class CerebroFrodo : MonoBehaviour
     {
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
-        Vector3 direccion = new Vector3(-h, 0f, -v).normalized;
+
+        // Movimiento relativo a la cámara: "adelante" siempre es donde mira la cámara
+        Transform cam = Camera.main.transform;
+        Vector3 adelante = cam.forward;
+        Vector3 derecha = cam.right;
+        adelante.y = 0f;
+        derecha.y = 0f;
+        adelante.Normalize();
+        derecha.Normalize();
+
+        Vector3 direccion = (-adelante * v - derecha * h).normalized;
 
         estaCorriendo = Input.GetKey(KeyCode.LeftShift) && direccion.magnitude > 0.1f;
         actuadorMovimiento.Mover(direccion, estaCorriendo);

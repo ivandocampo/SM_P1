@@ -6,11 +6,11 @@ public class SensorVistaOrco : MonoBehaviour
     public Transform objetivoFrodo;         
     public Transform elAnillo;              
     public float rangoVision = 15f;         
-    public float anguloVision = 60f;        // 120 grados total (60 hacia cada lado) - visión periférica de guardia alerta
-    public LayerMask capasObstaculos;       // Solo paredes/obstáculos, no incluir la layer de Frodo)
+    public float anguloVision = 60f;        // 120 grados total (60 hacia cada lado)
+    public LayerMask capasObstaculos;       // Solo paredes/obstáculos
 
     private Vector3 posicionOriginalAnillo;
-    private CerebroOrco[] todosOrcos;  // Cacheado para no buscar cada vez
+    private CerebroOrco[] todosOrcos;
 
     void Start()
     {
@@ -18,7 +18,7 @@ public class SensorVistaOrco : MonoBehaviour
         {
             posicionOriginalAnillo = elAnillo.position;
         }
-        todosOrcos = FindObjectsOfType<CerebroOrco>();
+        todosOrcos = FindObjectsByType<CerebroOrco>(FindObjectsSortMode.None);
     }
 
     public bool VerFrodo()
@@ -28,33 +28,25 @@ public class SensorVistaOrco : MonoBehaviour
         CerebroFrodo scriptFrodo = objetivoFrodo.GetComponent<CerebroFrodo>();
         if (scriptFrodo != null && scriptFrodo.usandoAnillo)
         {
-            return false; // Es invisible
+            return false;
         }
 
         float distancia = Vector3.Distance(transform.position, objetivoFrodo.position);
-        
-        // 1. Si está demasiado lejos, no lo ve
         if (distancia > rangoVision) return false;
 
         Vector3 direccionHaciaFrodo = (objetivoFrodo.position - transform.position).normalized;
 
-        // 2. NUEVO: Comprobar si Frodo está dentro del cono de visión frontal del Orco
         float anguloHaciaFrodo = Vector3.Angle(transform.forward, direccionHaciaFrodo);
-        if (anguloHaciaFrodo > anguloVision) return false; // Está a su espalda o muy a los lados
+        if (anguloHaciaFrodo > anguloVision) return false;
 
-        // 3. Comprobar si hay paredes bloqueando la línea de visión
-        // Lanzamos el ray solo contra obstáculos: si impacta una pared antes de llegar a Frodo, no lo ve
         RaycastHit hit;
         if (Physics.Raycast(transform.position, direccionHaciaFrodo, out hit, distancia, capasObstaculos))
         {
-            // Hay una pared entre el orco y Frodo
             return false;
         }
-        // No hay obstáculos en medio: lo ve
         return true;
     }
 
-    // Usado durante patrulla: detecta el anillo ausente a distancia con cono de visión
     public bool NoAnillo()
     {
         if (elAnillo != null && !elAnillo.gameObject.activeSelf)
@@ -77,32 +69,52 @@ public class SensorVistaOrco : MonoBehaviour
         return false;
     }
 
-    // Usado al llegar al pedestal: el orco está al lado y mira directamente si el anillo sigue ahí
-    // No necesita cono de visión ni rango largo porque está justo delante
     public bool AnilloEnPedestal()
     {
         return elAnillo != null && elAnillo.gameObject.activeSelf;
     }
 
-    // Al investigar un ruido, comprueba si lo que hay cerca es un compañero orco
-    // Usa un rango corto porque el orco ya llegó al origen del ruido
     public bool VerCompañeroCerca(float rango = 5f)
     {
         foreach (CerebroOrco otro in todosOrcos)
         {
-            if (otro.gameObject == this.gameObject) continue; // Ignorarse a sí mismo
+            if (otro.gameObject == this.gameObject) continue;
 
             float distancia = Vector3.Distance(transform.position, otro.transform.position);
             if (distancia < rango)
             {
-                // Comprobar que no hay pared entre ellos (lo ve realmente)
                 Vector3 direccion = (otro.transform.position - transform.position).normalized;
                 if (!Physics.Raycast(transform.position, direccion, distancia, capasObstaculos))
                 {
-                    return true; // Ve a un compañero: el ruido era de uno de los suyos
+                    return true;
                 }
             }
         }
         return false;
+    }
+
+    // ==================== GIZMOS ====================
+    void OnDrawGizmos()
+    {
+        Color colorCono = (Application.isPlaying && VerFrodo()) ? Color.red : Color.green;
+        Gizmos.color = colorCono;
+
+        Gizmos.DrawRay(transform.position, transform.forward * rangoVision);
+
+        Vector3 bordeIzq = Quaternion.Euler(0, -anguloVision, 0) * transform.forward;
+        Vector3 bordeDer = Quaternion.Euler(0, anguloVision, 0) * transform.forward;
+        Gizmos.DrawRay(transform.position, bordeIzq * rangoVision);
+        Gizmos.DrawRay(transform.position, bordeDer * rangoVision);
+
+        int segmentos = 20;
+        Vector3 puntoAnterior = transform.position + bordeIzq * rangoVision;
+        for (int i = 1; i <= segmentos; i++)
+        {
+            float angulo = Mathf.Lerp(-anguloVision, anguloVision, i / (float)segmentos);
+            Vector3 dir = Quaternion.Euler(0, angulo, 0) * transform.forward;
+            Vector3 puntoActual = transform.position + dir * rangoVision;
+            Gizmos.DrawLine(puntoAnterior, puntoActual);
+            puntoAnterior = puntoActual;
+        }
     }
 }

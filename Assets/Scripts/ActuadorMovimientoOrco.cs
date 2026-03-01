@@ -12,7 +12,7 @@ public class ActuadorMovimientoOrco : MonoBehaviour
     public Transform[] puntosPatrulla;
 
     [Header("Patrulla Bloqueo Salida")]
-    public Transform[] puntosBloqueoSalida;   // Waypoints cerca de la salida para patrullar cuando falta el anillo
+    public Transform[] puntosBloqueoSalida;   // Asignar 2-3 waypoints cerca de la salida por orco
 
     [Header("Puntos Clave")]
     public Transform pedestalAnillo;
@@ -38,6 +38,12 @@ public class ActuadorMovimientoOrco : MonoBehaviour
         ultimaPosicionConocida = posicion;
     }
 
+    // Llamado por CerebroOrco al entrar en INVESTIGACION para resetear el temporizador
+    public void ResetearInvestigacion()
+    {
+        temporizadorInvestigacion = 0f;
+    }
+
     public void EjecutarPatrulla()
     {
         agent.speed = velocidadPatrulla;
@@ -54,7 +60,7 @@ public class ActuadorMovimientoOrco : MonoBehaviour
         agent.destination = objetivoFrodo.position;
     }
 
-    // Devuelve true cuando termina de investigar y hay que transicionar
+    // Devuelve true cuando termina de investigar (llegó + esperó 2s)
     public bool EjecutarInvestigacion()
     {
         agent.speed = velocidadAlerta;
@@ -75,7 +81,7 @@ public class ActuadorMovimientoOrco : MonoBehaviour
     // Devuelve true cuando llega al pedestal
     public bool EjecutarComprobarAnillo()
     {
-        agent.speed = velocidadPatrulla;
+        agent.speed = velocidadAlerta;
         agent.destination = pedestalAnillo.position;
         return !agent.pathPending && agent.remainingDistance < 2.0f;
     }
@@ -84,7 +90,6 @@ public class ActuadorMovimientoOrco : MonoBehaviour
     {
         agent.speed = velocidadAlerta;
         
-        // Si hay waypoints de bloqueo, patrulla entre ellos
         if (puntosBloqueoSalida.Length > 0)
         {
             agent.destination = puntosBloqueoSalida[indiceBloqueo].position;
@@ -93,7 +98,6 @@ public class ActuadorMovimientoOrco : MonoBehaviour
         }
         else
         {
-            // Fallback: si no se asignaron waypoints, va al punto de salida directamente
             agent.destination = puntoSalida.position;
         }
     }
