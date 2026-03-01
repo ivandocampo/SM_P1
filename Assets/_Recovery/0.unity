@@ -473,7 +473,7 @@ GameObject:
   - component: {fileID: 23124701}
   - component: {fileID: 23124710}
   m_Layer: 0
-  m_Name: Orco1
+  m_Name: Orco_1 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -495,7 +495,6 @@ MonoBehaviour:
   distanciaAtaque: 1.2
   tiempoGraciaPersecucion: 2
   tiempoBusqueda: 7
-  tiempoEntreComprobaciones: 30
 --- !u!195 &23124702
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -554,6 +553,9 @@ MonoBehaviour:
   objetivoFrodo: {fileID: 135324210}
   rangoOidoCaminar: 5
   rangoOidoCorrer: 15
+  rangoOidoOrcoPersiguiendo: 12
+  rangoOidoOrcoPatrullando: 4
+  umbralVelocidadPersecucion: 5
 --- !u!136 &23124706
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -4195,7 +4197,7 @@ Transform:
   m_GameObject: {fileID: 249234614}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -29.7, y: 0.5, z: -17.9}
+  m_LocalPosition: {x: -30.8, y: 0.5, z: -17.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5899,7 +5901,7 @@ GameObject:
   - component: {fileID: 361772877}
   - component: {fileID: 361772886}
   m_Layer: 0
-  m_Name: Orco2
+  m_Name: Orco_2 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5921,7 +5923,6 @@ MonoBehaviour:
   distanciaAtaque: 1.2
   tiempoGraciaPersecucion: 2
   tiempoBusqueda: 7
-  tiempoEntreComprobaciones: 30
 --- !u!195 &361772878
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -5980,6 +5981,9 @@ MonoBehaviour:
   objetivoFrodo: {fileID: 135324210}
   rangoOidoCaminar: 5
   rangoOidoCorrer: 15
+  rangoOidoOrcoPersiguiendo: 12
+  rangoOidoOrcoPatrullando: 4
+  umbralVelocidadPersecucion: 5
 --- !u!136 &361772882
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -12001,7 +12005,7 @@ Transform:
   m_GameObject: {fileID: 702186068}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 14.8, y: 0.5, z: -7.5}
+  m_LocalPosition: {x: 16.3, y: 0.5, z: -4.9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -20094,7 +20098,7 @@ Transform:
   m_GameObject: {fileID: 1190348845}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 34.6, y: 0.5, z: -28.4}
+  m_LocalPosition: {x: 31.1, y: 0.5, z: -17}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -23860,7 +23864,7 @@ GameObject:
   - component: {fileID: 1397636004}
   - component: {fileID: 1397636013}
   m_Layer: 0
-  m_Name: Orco3
+  m_Name: Orco_3 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -23882,7 +23886,6 @@ MonoBehaviour:
   distanciaAtaque: 1.2
   tiempoGraciaPersecucion: 2
   tiempoBusqueda: 7
-  tiempoEntreComprobaciones: 30
 --- !u!195 &1397636005
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -23941,6 +23944,9 @@ MonoBehaviour:
   objetivoFrodo: {fileID: 135324210}
   rangoOidoCaminar: 5
   rangoOidoCorrer: 15
+  rangoOidoOrcoPersiguiendo: 12
+  rangoOidoOrcoPatrullando: 4
+  umbralVelocidadPersecucion: 5
 --- !u!136 &1397636009
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -24056,8 +24062,7 @@ MonoBehaviour:
   - {fileID: 1077624272}
   - {fileID: 981605686}
   puntosBloqueoSalida:
-  - {fileID: 1828865191}
-  - {fileID: 1190348846}
+  - {fileID: 702186069}
   - {fileID: 2146080284}
   pedestalAnillo: {fileID: 458616568}
   puntoSalida: {fileID: 599910990}
@@ -29052,7 +29057,7 @@ GameObject:
   - component: {fileID: 1693090675}
   - component: {fileID: 1693090684}
   m_Layer: 0
-  m_Name: Orco4
+  m_Name: Orco_4 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -29074,7 +29079,6 @@ MonoBehaviour:
   distanciaAtaque: 1.2
   tiempoGraciaPersecucion: 2
   tiempoBusqueda: 7
-  tiempoEntreComprobaciones: 30
 --- !u!195 &1693090676
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -29133,6 +29137,9 @@ MonoBehaviour:
   objetivoFrodo: {fileID: 135324210}
   rangoOidoCaminar: 5
   rangoOidoCorrer: 15
+  rangoOidoOrcoPersiguiendo: 12
+  rangoOidoOrcoPatrullando: 4
+  umbralVelocidadPersecucion: 5
 --- !u!136 &1693090680
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -29248,9 +29255,8 @@ MonoBehaviour:
   - {fileID: 1901906711}
   - {fileID: 1927349343}
   puntosBloqueoSalida:
-  - {fileID: 1828865191}
-  - {fileID: 1190348846}
-  - {fileID: 249234615}
+  - {fileID: 2146080284}
+  - {fileID: 702186069}
   pedestalAnillo: {fileID: 458616568}
   puntoSalida: {fileID: 599910990}
   objetivoFrodo: {fileID: 135324210}
@@ -32384,7 +32390,7 @@ Transform:
   m_GameObject: {fileID: 1828865190}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -2.3, y: 0.5, z: -40.4}
+  m_LocalPosition: {x: -2.9, y: 0.5, z: -33.3}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -36925,7 +36931,7 @@ GameObject:
   - component: {fileID: 2135347910}
   - component: {fileID: 2135347919}
   m_Layer: 0
-  m_Name: Orco5
+  m_Name: Orco_5
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -36947,7 +36953,6 @@ MonoBehaviour:
   distanciaAtaque: 1.2
   tiempoGraciaPersecucion: 2
   tiempoBusqueda: 7
-  tiempoEntreComprobaciones: 30
 --- !u!195 &2135347911
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -37006,6 +37011,9 @@ MonoBehaviour:
   objetivoFrodo: {fileID: 135324210}
   rangoOidoCaminar: 5
   rangoOidoCorrer: 15
+  rangoOidoOrcoPersiguiendo: 12
+  rangoOidoOrcoPatrullando: 4
+  umbralVelocidadPersecucion: 5
 --- !u!136 &2135347915
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -37154,7 +37162,7 @@ Transform:
   m_GameObject: {fileID: 2146080283}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -17.8, y: 0.5, z: 0.7}
+  m_LocalPosition: {x: -17.8, y: 0.5, z: -4.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

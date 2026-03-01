@@ -14,7 +14,6 @@ public class SensorVistaOrco : MonoBehaviour
     public float alturaObjetivoFrodo = 1.0f;  // A qué altura de Frodo apunta
 
     private Vector3 posicionOriginalAnillo;
-    private CerebroOrco[] todosOrcos;
 
     void Start()
     {
@@ -22,7 +21,6 @@ public class SensorVistaOrco : MonoBehaviour
         {
             posicionOriginalAnillo = elAnillo.position;
         }
-        todosOrcos = FindObjectsByType<CerebroOrco>(FindObjectsSortMode.None);
     }
 
     public bool VerFrodo()
