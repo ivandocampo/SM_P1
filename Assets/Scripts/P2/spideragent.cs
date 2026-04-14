@@ -98,21 +98,21 @@ public class SpiderAgent : MonoBehaviour
    
     private void ManejarObjetivoPerdido()
     {
-        comunicacion.InformarPredicado(PredicateType.THIEF_LOST);
+        BroadcastPredicado(PredicateType.THIEF_LOST);
         Debug.Log($"[{agentId}] Ladrón perdido de vista — informando a guardias");
     }
 
-    
+
     private void ManejarAnilloDesaparecido()
     {
         if (anilloReportado) return;
         anilloReportado = true;
 
-        comunicacion.InformarPredicado(PredicateType.RING_STOLEN);
+        BroadcastPredicado(PredicateType.RING_STOLEN);
         Debug.Log($"[{agentId}] ¡Anillo desaparecido del pedestal! — informando a guardias");
     }
 
-    
+
     private void ManejarSonidoDetectado(Vector3 posicion)
     {
         if (Time.time - ultimoInformeAvistamiento >= cooldownInforme)
@@ -123,22 +123,32 @@ public class SpiderAgent : MonoBehaviour
 
     // COMUNICACIÓN
 
-
     private void EnviarInformeAvistamiento(Vector3 posicion, bool visionDirecta)
     {
         ultimoInformeAvistamiento = Time.time;
 
         ThiefSighting avistamiento = new ThiefSighting
         {
-            Location = new Position(posicion),
-            Timestamp = Time.time,
-            ReportedBy = agentId,
+            Location     = new Position(posicion),
+            Timestamp    = Time.time,
+            ReportedBy   = agentId,
             DirectVision = visionDirecta
         };
 
-        comunicacion.InformarAvistamiento(avistamiento);
+        ACLMessage msg = new ACLMessage(ACLPerformative.INFORM, agentId, "");
+        msg.Content  = ContentLanguage.Encode(avistamiento);
+        msg.Protocol = "fipa-inform";
+        comunicacion.Broadcast(msg);
 
         string tipo = visionDirecta ? "VISTO" : "OÍDO";
         Debug.Log($"[{agentId}] Ladrón {tipo} en {posicion} — informando a guardias");
+    }
+
+    private void BroadcastPredicado(PredicateType predicado)
+    {
+        ACLMessage msg = new ACLMessage(ACLPerformative.INFORM, agentId, "");
+        msg.Content  = ContentLanguage.EncodePredicate(predicado);
+        msg.Protocol = "fipa-inform";
+        comunicacion.Broadcast(msg);
     }
 }

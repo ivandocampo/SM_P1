@@ -136,16 +136,18 @@ public class GuardAgent : MonoBehaviour
 
         if (comunicacion != null)
         {
-            comunicacion.OnInformRecibido       -= protocolHandler.ManejarInform;
-            comunicacion.OnRequestRecibido      -= protocolHandler.ManejarRequest;
-            comunicacion.OnQueryRecibido        -= protocolHandler.ManejarQuery;
-            comunicacion.OnCFPRecibido          -= onCFP;
-            comunicacion.OnPropuestaAceptada    -= protocolHandler.ManejarPropuestaAceptada;
-            comunicacion.OnPropuestaRechazada   -= protocolHandler.ManejarPropuestaRechazada;
-            comunicacion.OnDoneRecibido         -= protocolHandler.ManejarDone;
-            comunicacion.OnAgreeRecibido        -= protocolHandler.ManejarAgree;
-            comunicacion.OnRefuseRecibido       -= protocolHandler.ManejarRefuse;
+            comunicacion.OnInformRecibido     -= protocolHandler.ManejarInform;
+            comunicacion.OnRequestRecibido    -= protocolHandler.ManejarRequest;
+            comunicacion.OnQueryRecibido      -= protocolHandler.ManejarQuery;
+            comunicacion.OnCFPRecibido        -= onCFP;
+            comunicacion.OnPropuestaAceptada  -= protocolHandler.ManejarPropuestaAceptada;
+            comunicacion.OnPropuestaRechazada -= protocolHandler.ManejarPropuestaRechazada;
+            comunicacion.OnDoneRecibido       -= protocolHandler.ManejarDone;
+            comunicacion.OnAgreeRecibido      -= protocolHandler.ManejarAgree;
+            comunicacion.OnRefuseRecibido     -= protocolHandler.ManejarRefuse;
         }
+
+        contractNetManager?.Limpiar();
     }
 
     // CICLO PRINCIPAL
@@ -194,7 +196,7 @@ public class GuardAgent : MonoBehaviour
     private void OnLadronVisto(Vector3 posicion)
     {
         creencias.ActualizarPosicionLadron(posicion, Time.time, true, agentId);
-        comunicacion.InformarAvistamiento(new ThiefSighting
+        protocolHandler.InformarAvistamiento(new ThiefSighting
         {
             Location     = new Position(posicion),
             Timestamp    = Time.time,
@@ -211,14 +213,14 @@ public class GuardAgent : MonoBehaviour
     private void OnLadronPerdido()
     {
         creencias.MarcarLadronPerdido();
-        comunicacion.InformarPredicado(PredicateType.THIEF_LOST);
+        protocolHandler.InformarPredicado(PredicateType.THIEF_LOST);
         contractNetManager.IniciarDistribucionBusqueda();
     }
 
     private void OnAnilloDesaparecido()
     {
         creencias.MarcarAnilloRobado();
-        comunicacion.InformarPredicado(PredicateType.RING_STOLEN);
+        protocolHandler.InformarPredicado(PredicateType.RING_STOLEN);
         Debug.Log($"[{agentId}] Anillo robado detectado");
     }
 
@@ -279,14 +281,14 @@ public class GuardAgent : MonoBehaviour
 
             if (behaviorActivo_tipo == BehaviorType.SearchAssigned && creencias.TieneTareaAsignada)
             {
-                comunicacion.NotificarDone(creencias.ConversacionTareaAsignada, creencias.AsignadorTarea);
-                comunicacion.InformarPredicado(PredicateType.ZONE_CLEAR);
+                protocolHandler.NotificarDone(creencias.ConversacionTareaAsignada, creencias.AsignadorTarea);
+                protocolHandler.InformarPredicado(PredicateType.ZONE_CLEAR);
                 creencias.LimpiarTarea();
             }
 
             if (creencias.TieneRequestPendiente)
             {
-                comunicacion.NotificarDone(creencias.ConversacionRequest, creencias.SolicitanteRequest);
+                protocolHandler.NotificarDone(creencias.ConversacionRequest, creencias.SolicitanteRequest);
                 creencias.LimpiarRequest();
             }
 

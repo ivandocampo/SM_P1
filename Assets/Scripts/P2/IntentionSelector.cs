@@ -110,7 +110,8 @@ public class IntentionSelector
     
     public bool EstaDisponible()
     {
-        return IntencionActual.Nombre == BehaviorType.Patrol 
+        return IntencionActual == null
+            || IntencionActual.Nombre == BehaviorType.Patrol
             || IntencionActual.Nombre == BehaviorType.CheckPedestal;
     }
 
