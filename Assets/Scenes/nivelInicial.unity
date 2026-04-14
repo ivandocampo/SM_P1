@@ -471,6 +471,7 @@ GameObject:
   - component: {fileID: 23124703}
   - component: {fileID: 23124702}
   - component: {fileID: 23124701}
+  - component: {fileID: 23124711}
   - component: {fileID: 23124710}
   m_Layer: 0
   m_Name: Orco1
@@ -488,14 +489,18 @@ MonoBehaviour:
   m_GameObject: {fileID: 23124700}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 71420d2db48ef6c408e568a4039b52ae, type: 3}
+  m_Script: {fileID: 11500000, guid: 1c90e15c9fb540b4e88c7a4aba0bacf6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CerebroOrco
-  objetivoFrodo: {fileID: 135324210}
-  distanciaAtaque: 1.2
-  tiempoGraciaPersecucion: 2
-  tiempoBusqueda: 7
-  tiempoEntreComprobaciones: 30
+  objetivo: {fileID: 135324210}
+  rangoVision: 15
+  anguloVision: 60
+  capasObstaculos:
+    serializedVersion: 2
+    m_Bits: 0
+  alturaOjos: 1.5
+  alturaObjetivo: 1
+  objetoAnillo: {fileID: 458616568}
 --- !u!195 &23124702
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -527,18 +532,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 23124700}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ca974069099930439c7ebd47648f907, type: 3}
+  m_Script: {fileID: 11500000, guid: e1dd59152df40b245a67b132f9fd5e80, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SensorVistaOrco
-  objetivoFrodo: {fileID: 135324210}
-  elAnillo: {fileID: 458616568}
-  rangoVision: 15
-  anguloVision: 60
-  capasObstaculos:
-    serializedVersion: 2
-    m_Bits: 1
-  alturaOjosOrco: 1.5
-  alturaObjetivoFrodo: 1
+  mostrarLogs: 0
 --- !u!114 &23124705
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -548,12 +545,24 @@ MonoBehaviour:
   m_GameObject: {fileID: 23124700}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7bd9d62b26aa98b4da66a53037d4626f, type: 3}
+  m_Script: {fileID: 11500000, guid: 32894f18f66c3e647996e1f1f00d9a7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SensorOidoOrco
+  agentId: Guard_01
   objetivoFrodo: {fileID: 135324210}
-  rangoOidoCaminar: 5
-  rangoOidoCorrer: 15
+  distanciaCaptura: 1.2
+  puntosPatrulla:
+  - {fileID: 2092791913}
+  - {fileID: 446625824}
+  - {fileID: 1490209287}
+  puntoSalida: {fileID: 599910990}
+  puntosBloqueoSalida:
+  - {fileID: 1828865191}
+  - {fileID: 249234615}
+  - {fileID: 1190348846}
+  pedestalAnillo: {fileID: 458616568}
+  tiempoEntreComprobaciones: 30
+  cooldownContractNet: 10
 --- !u!136 &23124706
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -658,25 +667,28 @@ MonoBehaviour:
   m_GameObject: {fileID: 23124700}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d83e321990b06ab45902a176dfd4f3e6, type: 3}
+  m_Script: {fileID: 11500000, guid: c68f5cc071adffc4a906b714abdb1197, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ActuadorMovimientoOrco
+  m_EditorClassIdentifier: Assembly-CSharp::ActuadorMovimiento
   velocidadPatrulla: 3.5
   velocidadAlerta: 6
   velocidadPersecucion: 8
-  puntosPatrulla:
-  - {fileID: 2092791913}
-  - {fileID: 446625824}
-  - {fileID: 1490209287}
-  puntosBloqueoSalida:
-  - {fileID: 1190348846}
-  - {fileID: 1828865191}
-  - {fileID: 249234615}
-  pedestalAnillo: {fileID: 458616568}
-  puntoSalida: {fileID: 599910990}
-  objetivoFrodo: {fileID: 135324210}
-  radioBusqueda: 10
-  puntosBusquedaMax: 4
+--- !u!114 &23124711
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 23124700}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70538accd2895d5449985ac8175bf005, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SensorOido
+  objetivo: {fileID: 135324210}
+  rangoOidoCaminar: 5
+  rangoOidoCorrer: 15
+  intervaloNotificacion: 0.5
 --- !u!1 &24686706
 GameObject:
   m_ObjectHideFlags: 0
@@ -2201,11 +2213,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 135324203}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: decd0f2a334c6b243ba7a42292dd2add, type: 3}
+  m_Script: {fileID: 11500000, guid: e67dcb8c5556ffc46ab76045cfbefcc8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SensorTactoFrodo
-  elAnillo: {fileID: 458616568}
-  laSalida: {fileID: 599910990}
+  duracionAnillo: 5
+  tiempoRecarga: 30
 --- !u!195 &135324206
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -2332,11 +2344,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 135324203}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d09d19a8cebe7c442bc1ec3ac615e99d, type: 3}
+  m_Script: {fileID: 11500000, guid: e0ced7b1c7aa0b14d927f51ff7dd79f2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CerebroFrodo
-  duracionAnillo: 5
-  tiempoRecarga: 30
+  elAnillo: {fileID: 458616568}
+  laSalida: {fileID: 599910990}
 --- !u!54 &135324212
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -2373,7 +2385,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 135324203}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 55647434199861e44a0d0ebba9dc15ab, type: 3}
+  m_Script: {fileID: 11500000, guid: f33902f828dff674a91f51a3fb61693c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ActuadorInteraccionFrodo
   elAnillo: {fileID: 458616568}
@@ -2389,7 +2401,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 135324203}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 00f11ab11990b874dac22b9d406542fd, type: 3}
+  m_Script: {fileID: 11500000, guid: 5f33bca3e5c69be4391bce525de03d91, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ActuadorMovimientoFrodo
   velocidadCaminar: 5
@@ -2869,11 +2881,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 174932385}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Script: {fileID: 11500000, guid: edc2d805b65a1a242a4a4bfe50997706, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
   speed: 150
-  anguloAbierta: 90
+  anguloAbierta: 270
 --- !u!1 &175381693
 GameObject:
   m_ObjectHideFlags: 0
@@ -5881,7 +5893,7 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 343322197}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &361772876
+--- !u!1 &358464101
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -5889,220 +5901,42 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 361772885}
-  - component: {fileID: 361772884}
-  - component: {fileID: 361772883}
-  - component: {fileID: 361772882}
-  - component: {fileID: 361772881}
-  - component: {fileID: 361772879}
-  - component: {fileID: 361772878}
-  - component: {fileID: 361772877}
-  - component: {fileID: 361772886}
+  - component: {fileID: 358464103}
+  - component: {fileID: 358464102}
   m_Layer: 0
-  m_Name: Orco2
+  m_Name: AgentRegistry
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &361772877
+--- !u!114 &358464102
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 361772876}
+  m_GameObject: {fileID: 358464101}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 71420d2db48ef6c408e568a4039b52ae, type: 3}
+  m_Script: {fileID: 11500000, guid: f0a0a044827139c4a8d30bc0904aedd0, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CerebroOrco
-  objetivoFrodo: {fileID: 135324210}
-  distanciaAtaque: 1.2
-  tiempoGraciaPersecucion: 2
-  tiempoBusqueda: 7
-  tiempoEntreComprobaciones: 30
---- !u!195 &361772878
-NavMeshAgent:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 361772876}
-  m_Enabled: 1
-  m_AgentTypeID: 0
-  m_Radius: 0.3
-  m_Speed: 3.5
-  m_Acceleration: 8
-  avoidancePriority: 20
-  m_AngularSpeed: 120
-  m_StoppingDistance: 0
-  m_AutoTraverseOffMeshLink: 1
-  m_AutoBraking: 1
-  m_AutoRepath: 1
-  m_Height: 2
-  m_BaseOffset: 1
-  m_WalkableMask: 4294967295
-  m_ObstacleAvoidanceType: 2
---- !u!114 &361772879
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 361772876}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ca974069099930439c7ebd47648f907, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SensorVistaOrco
-  objetivoFrodo: {fileID: 135324210}
-  elAnillo: {fileID: 458616568}
-  rangoVision: 15
-  anguloVision: 60
-  capasObstaculos:
-    serializedVersion: 2
-    m_Bits: 1
-  alturaOjosOrco: 1.5
-  alturaObjetivoFrodo: 1
---- !u!114 &361772881
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 361772876}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7bd9d62b26aa98b4da66a53037d4626f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SensorOidoOrco
-  objetivoFrodo: {fileID: 135324210}
-  rangoOidoCaminar: 5
-  rangoOidoCorrer: 15
---- !u!136 &361772882
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 361772876}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.5
-  m_Height: 2
-  m_Direction: 1
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!23 &361772883
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 361772876}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_MaskInteraction: 0
-  m_AdditionalVertexStreams: {fileID: 0}
---- !u!33 &361772884
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 361772876}
-  m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
---- !u!4 &361772885
+  m_EditorClassIdentifier: Assembly-CSharp::AgentRegistry
+--- !u!4 &358464103
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 361772876}
+  m_GameObject: {fileID: 358464101}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 15.356823, y: 1, z: 27.72158}
+  m_LocalPosition: {x: -2.72718, y: 0.4449, z: 13.28863}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &361772886
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 361772876}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d83e321990b06ab45902a176dfd4f3e6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ActuadorMovimientoOrco
-  velocidadPatrulla: 3.5
-  velocidadAlerta: 6
-  velocidadPersecucion: 8
-  puntosPatrulla:
-  - {fileID: 1304087655}
-  - {fileID: 1417041507}
-  - {fileID: 2125961013}
-  puntosBloqueoSalida:
-  - {fileID: 249234615}
-  - {fileID: 1828865191}
-  - {fileID: 1190348846}
-  pedestalAnillo: {fileID: 458616568}
-  puntoSalida: {fileID: 599910990}
-  objetivoFrodo: {fileID: 135324210}
-  radioBusqueda: 10
-  puntosBusquedaMax: 4
 --- !u!1 &364149981
 GameObject:
   m_ObjectHideFlags: 0
@@ -6327,6 +6161,240 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1181314369}
   m_LocalEulerAnglesHint: {x: 0, y: -427.01, z: 0}
+--- !u!1 &386436400
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 386436410}
+  - component: {fileID: 386436409}
+  - component: {fileID: 386436408}
+  - component: {fileID: 386436407}
+  - component: {fileID: 386436406}
+  - component: {fileID: 386436405}
+  - component: {fileID: 386436404}
+  - component: {fileID: 386436403}
+  - component: {fileID: 386436402}
+  - component: {fileID: 386436401}
+  m_Layer: 0
+  m_Name: Orco3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &386436401
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 386436400}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c68f5cc071adffc4a906b714abdb1197, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ActuadorMovimiento
+  velocidadPatrulla: 3.5
+  velocidadAlerta: 6
+  velocidadPersecucion: 8
+--- !u!114 &386436402
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 386436400}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70538accd2895d5449985ac8175bf005, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SensorOido
+  objetivo: {fileID: 135324210}
+  rangoOidoCaminar: 5
+  rangoOidoCorrer: 15
+  intervaloNotificacion: 0.5
+--- !u!114 &386436403
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 386436400}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c90e15c9fb540b4e88c7a4aba0bacf6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CerebroOrco
+  objetivo: {fileID: 135324210}
+  rangoVision: 15
+  anguloVision: 60
+  capasObstaculos:
+    serializedVersion: 2
+    m_Bits: 0
+  alturaOjos: 1.5
+  alturaObjetivo: 1
+  objetoAnillo: {fileID: 458616568}
+--- !u!195 &386436404
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 386436400}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.3
+  m_Speed: 3.5
+  m_Acceleration: 8
+  avoidancePriority: 10
+  m_AngularSpeed: 120
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 1
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 2
+--- !u!114 &386436405
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 386436400}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1dd59152df40b245a67b132f9fd5e80, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SensorVistaOrco
+  mostrarLogs: 0
+--- !u!114 &386436406
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 386436400}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32894f18f66c3e647996e1f1f00d9a7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SensorOidoOrco
+  agentId: Guard_03
+  objetivoFrodo: {fileID: 135324210}
+  distanciaCaptura: 1.2
+  puntosPatrulla:
+  - {fileID: 1470651046}
+  - {fileID: 1077624272}
+  - {fileID: 981605686}
+  puntoSalida: {fileID: 599910990}
+  puntosBloqueoSalida:
+  - {fileID: 1815809954}
+  - {fileID: 702186069}
+  - {fileID: 2146080284}
+  pedestalAnillo: {fileID: 458616568}
+  tiempoEntreComprobaciones: 30
+  cooldownContractNet: 10
+--- !u!136 &386436407
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 386436400}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.5
+  m_Height: 2
+  m_Direction: 1
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!23 &386436408
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 386436400}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &386436409
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 386436400}
+  m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!4 &386436410
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 386436400}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -30, y: 1, z: -24.6}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &393929287
 GameObject:
   m_ObjectHideFlags: 0
@@ -8753,11 +8821,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 511362383}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Script: {fileID: 11500000, guid: edc2d805b65a1a242a4a4bfe50997706, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
   speed: 150
-  anguloAbierta: 90
+  anguloAbierta: 270
 --- !u!208 &511362386
 NavMeshObstacle:
   m_ObjectHideFlags: 0
@@ -9380,11 +9448,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 551922990}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Script: {fileID: 11500000, guid: edc2d805b65a1a242a4a4bfe50997706, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
   speed: 150
-  anguloAbierta: 90
+  anguloAbierta: 270
 --- !u!208 &551922993
 NavMeshObstacle:
   m_ObjectHideFlags: 0
@@ -13411,11 +13479,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 796582020}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Script: {fileID: 11500000, guid: edc2d805b65a1a242a4a4bfe50997706, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
   speed: 150
-  anguloAbierta: 90
+  anguloAbierta: 270
 --- !u!208 &796582023
 NavMeshObstacle:
   m_ObjectHideFlags: 0
@@ -16359,11 +16427,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 953518879}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Script: {fileID: 11500000, guid: edc2d805b65a1a242a4a4bfe50997706, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
   speed: 150
-  anguloAbierta: 90
+  anguloAbierta: 270
 --- !u!1 &956380993
 GameObject:
   m_ObjectHideFlags: 0
@@ -16806,11 +16874,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 968354858}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Script: {fileID: 11500000, guid: edc2d805b65a1a242a4a4bfe50997706, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
   speed: 150
-  anguloAbierta: 90
+  anguloAbierta: 270
 --- !u!1 &971733343
 GameObject:
   m_ObjectHideFlags: 0
@@ -17514,6 +17582,240 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1018749583}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1026528686
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1026528696}
+  - component: {fileID: 1026528695}
+  - component: {fileID: 1026528694}
+  - component: {fileID: 1026528693}
+  - component: {fileID: 1026528692}
+  - component: {fileID: 1026528691}
+  - component: {fileID: 1026528690}
+  - component: {fileID: 1026528689}
+  - component: {fileID: 1026528688}
+  - component: {fileID: 1026528687}
+  m_Layer: 0
+  m_Name: Orco4
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1026528687
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1026528686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c68f5cc071adffc4a906b714abdb1197, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ActuadorMovimiento
+  velocidadPatrulla: 3.5
+  velocidadAlerta: 6
+  velocidadPersecucion: 8
+--- !u!114 &1026528688
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1026528686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70538accd2895d5449985ac8175bf005, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SensorOido
+  objetivo: {fileID: 135324210}
+  rangoOidoCaminar: 5
+  rangoOidoCorrer: 15
+  intervaloNotificacion: 0.5
+--- !u!114 &1026528689
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1026528686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c90e15c9fb540b4e88c7a4aba0bacf6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CerebroOrco
+  objetivo: {fileID: 135324210}
+  rangoVision: 15
+  anguloVision: 60
+  capasObstaculos:
+    serializedVersion: 2
+    m_Bits: 0
+  alturaOjos: 1.5
+  alturaObjetivo: 1
+  objetoAnillo: {fileID: 458616568}
+--- !u!195 &1026528690
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1026528686}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.3
+  m_Speed: 3.5
+  m_Acceleration: 8
+  avoidancePriority: 10
+  m_AngularSpeed: 120
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 1
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 2
+--- !u!114 &1026528691
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1026528686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1dd59152df40b245a67b132f9fd5e80, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SensorVistaOrco
+  mostrarLogs: 0
+--- !u!114 &1026528692
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1026528686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32894f18f66c3e647996e1f1f00d9a7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SensorOidoOrco
+  agentId: Guard_04
+  objetivoFrodo: {fileID: 135324210}
+  distanciaCaptura: 1.2
+  puntosPatrulla:
+  - {fileID: 1602148630}
+  - {fileID: 1901906711}
+  - {fileID: 1927349343}
+  puntoSalida: {fileID: 599910990}
+  puntosBloqueoSalida:
+  - {fileID: 1190348846}
+  - {fileID: 702186069}
+  - {fileID: 2146080284}
+  pedestalAnillo: {fileID: 458616568}
+  tiempoEntreComprobaciones: 30
+  cooldownContractNet: 10
+--- !u!136 &1026528693
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1026528686}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.5
+  m_Height: 2
+  m_Direction: 1
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!23 &1026528694
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1026528686}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1026528695
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1026528686}
+  m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!4 &1026528696
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1026528686}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -33.4, y: 1, z: 37.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1036709836
 GameObject:
   m_ObjectHideFlags: 0
@@ -23362,6 +23664,240 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1382621584}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1383181992
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1383182002}
+  - component: {fileID: 1383182001}
+  - component: {fileID: 1383182000}
+  - component: {fileID: 1383181999}
+  - component: {fileID: 1383181998}
+  - component: {fileID: 1383181997}
+  - component: {fileID: 1383181996}
+  - component: {fileID: 1383181995}
+  - component: {fileID: 1383181994}
+  - component: {fileID: 1383181993}
+  m_Layer: 0
+  m_Name: Orco5
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1383181993
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1383181992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c68f5cc071adffc4a906b714abdb1197, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ActuadorMovimiento
+  velocidadPatrulla: 3.5
+  velocidadAlerta: 6
+  velocidadPersecucion: 8
+--- !u!114 &1383181994
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1383181992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70538accd2895d5449985ac8175bf005, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SensorOido
+  objetivo: {fileID: 135324210}
+  rangoOidoCaminar: 5
+  rangoOidoCorrer: 15
+  intervaloNotificacion: 0.5
+--- !u!114 &1383181995
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1383181992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c90e15c9fb540b4e88c7a4aba0bacf6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CerebroOrco
+  objetivo: {fileID: 135324210}
+  rangoVision: 15
+  anguloVision: 60
+  capasObstaculos:
+    serializedVersion: 2
+    m_Bits: 0
+  alturaOjos: 1.5
+  alturaObjetivo: 1
+  objetoAnillo: {fileID: 458616568}
+--- !u!195 &1383181996
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1383181992}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.3
+  m_Speed: 3.5
+  m_Acceleration: 8
+  avoidancePriority: 10
+  m_AngularSpeed: 120
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 1
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 2
+--- !u!114 &1383181997
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1383181992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1dd59152df40b245a67b132f9fd5e80, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SensorVistaOrco
+  mostrarLogs: 0
+--- !u!114 &1383181998
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1383181992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32894f18f66c3e647996e1f1f00d9a7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SensorOidoOrco
+  agentId: Guard_05
+  objetivoFrodo: {fileID: 135324210}
+  distanciaCaptura: 1.2
+  puntosPatrulla:
+  - {fileID: 857960238}
+  - {fileID: 1258118015}
+  - {fileID: 1815809954}
+  puntoSalida: {fileID: 599910990}
+  puntosBloqueoSalida:
+  - {fileID: 1828865191}
+  - {fileID: 1190348846}
+  - {fileID: 2146080284}
+  pedestalAnillo: {fileID: 458616568}
+  tiempoEntreComprobaciones: 30
+  cooldownContractNet: 10
+--- !u!136 &1383181999
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1383181992}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.5
+  m_Height: 2
+  m_Direction: 1
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!23 &1383182000
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1383181992}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1383182001
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1383181992}
+  m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!4 &1383182002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1383181992}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.3, y: 1, z: 9.3}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1384027697
 GameObject:
   m_ObjectHideFlags: 0
@@ -23519,11 +24055,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1387426441}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Script: {fileID: 11500000, guid: edc2d805b65a1a242a4a4bfe50997706, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
   speed: 150
-  anguloAbierta: 90
+  anguloAbierta: 270
 --- !u!208 &1387426444
 NavMeshObstacle:
   m_ObjectHideFlags: 0
@@ -23842,228 +24378,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1387876865}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &1397636003
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1397636012}
-  - component: {fileID: 1397636011}
-  - component: {fileID: 1397636010}
-  - component: {fileID: 1397636009}
-  - component: {fileID: 1397636008}
-  - component: {fileID: 1397636006}
-  - component: {fileID: 1397636005}
-  - component: {fileID: 1397636004}
-  - component: {fileID: 1397636013}
-  m_Layer: 0
-  m_Name: Orco3
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1397636004
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1397636003}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 71420d2db48ef6c408e568a4039b52ae, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CerebroOrco
-  objetivoFrodo: {fileID: 135324210}
-  distanciaAtaque: 1.2
-  tiempoGraciaPersecucion: 2
-  tiempoBusqueda: 7
-  tiempoEntreComprobaciones: 30
---- !u!195 &1397636005
-NavMeshAgent:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1397636003}
-  m_Enabled: 1
-  m_AgentTypeID: 0
-  m_Radius: 0.3
-  m_Speed: 3.5
-  m_Acceleration: 8
-  avoidancePriority: 30
-  m_AngularSpeed: 120
-  m_StoppingDistance: 0
-  m_AutoTraverseOffMeshLink: 1
-  m_AutoBraking: 1
-  m_AutoRepath: 1
-  m_Height: 2
-  m_BaseOffset: 1
-  m_WalkableMask: 4294967295
-  m_ObstacleAvoidanceType: 2
---- !u!114 &1397636006
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1397636003}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ca974069099930439c7ebd47648f907, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SensorVistaOrco
-  objetivoFrodo: {fileID: 135324210}
-  elAnillo: {fileID: 458616568}
-  rangoVision: 15
-  anguloVision: 60
-  capasObstaculos:
-    serializedVersion: 2
-    m_Bits: 1
-  alturaOjosOrco: 1.5
-  alturaObjetivoFrodo: 1
---- !u!114 &1397636008
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1397636003}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7bd9d62b26aa98b4da66a53037d4626f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SensorOidoOrco
-  objetivoFrodo: {fileID: 135324210}
-  rangoOidoCaminar: 5
-  rangoOidoCorrer: 15
---- !u!136 &1397636009
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1397636003}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.5
-  m_Height: 2
-  m_Direction: 1
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!23 &1397636010
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1397636003}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_MaskInteraction: 0
-  m_AdditionalVertexStreams: {fileID: 0}
---- !u!33 &1397636011
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1397636003}
-  m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
---- !u!4 &1397636012
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1397636003}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -27.24318, y: 1, z: -21.47842}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1397636013
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1397636003}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d83e321990b06ab45902a176dfd4f3e6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ActuadorMovimientoOrco
-  velocidadPatrulla: 3.5
-  velocidadAlerta: 6
-  velocidadPersecucion: 8
-  puntosPatrulla:
-  - {fileID: 1470651046}
-  - {fileID: 1077624272}
-  - {fileID: 981605686}
-  puntosBloqueoSalida:
-  - {fileID: 1828865191}
-  - {fileID: 1190348846}
-  - {fileID: 2146080284}
-  pedestalAnillo: {fileID: 458616568}
-  puntoSalida: {fileID: 599910990}
-  objetivoFrodo: {fileID: 135324210}
-  radioBusqueda: 10
-  puntosBusquedaMax: 4
 --- !u!1 &1399088586
 GameObject:
   m_ObjectHideFlags: 0
@@ -25571,7 +25885,7 @@ AudioListener:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1494637217}
-  m_Enabled: 1
+  m_Enabled: 0
 --- !u!20 &1494637220
 Camera:
   m_ObjectHideFlags: 0
@@ -26298,7 +26612,7 @@ AudioListener:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1549756883}
-  m_Enabled: 1
+  m_Enabled: 0
 --- !u!20 &1549756887
 Camera:
   m_ObjectHideFlags: 0
@@ -26824,10 +27138,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 1588009153}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d8180e57992343745af50ddf91958b38, type: 3}
+  m_Script: {fileID: 11500000, guid: 01142998cf2fd1843b3dd8065b8782ee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
-  pantallaVictoria: {fileID: 542349789}
+  pantallaVictoria: {fileID: 0}
 --- !u!4 &1588009155
 Transform:
   m_ObjectHideFlags: 0
@@ -28117,11 +28431,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1651455636}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Script: {fileID: 11500000, guid: edc2d805b65a1a242a4a4bfe50997706, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
   speed: 150
-  anguloAbierta: 90
+  anguloAbierta: 270
 --- !u!208 &1651455643
 NavMeshObstacle:
   m_ObjectHideFlags: 0
@@ -29034,228 +29348,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1692219964}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &1693090674
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1693090683}
-  - component: {fileID: 1693090682}
-  - component: {fileID: 1693090681}
-  - component: {fileID: 1693090680}
-  - component: {fileID: 1693090679}
-  - component: {fileID: 1693090677}
-  - component: {fileID: 1693090676}
-  - component: {fileID: 1693090675}
-  - component: {fileID: 1693090684}
-  m_Layer: 0
-  m_Name: Orco4
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1693090675
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1693090674}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 71420d2db48ef6c408e568a4039b52ae, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CerebroOrco
-  objetivoFrodo: {fileID: 135324210}
-  distanciaAtaque: 1.2
-  tiempoGraciaPersecucion: 2
-  tiempoBusqueda: 7
-  tiempoEntreComprobaciones: 30
---- !u!195 &1693090676
-NavMeshAgent:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1693090674}
-  m_Enabled: 1
-  m_AgentTypeID: 0
-  m_Radius: 0.3
-  m_Speed: 3.5
-  m_Acceleration: 8
-  avoidancePriority: 40
-  m_AngularSpeed: 120
-  m_StoppingDistance: 0
-  m_AutoTraverseOffMeshLink: 1
-  m_AutoBraking: 1
-  m_AutoRepath: 1
-  m_Height: 2
-  m_BaseOffset: 1
-  m_WalkableMask: 4294967295
-  m_ObstacleAvoidanceType: 2
---- !u!114 &1693090677
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1693090674}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ca974069099930439c7ebd47648f907, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SensorVistaOrco
-  objetivoFrodo: {fileID: 135324210}
-  elAnillo: {fileID: 458616568}
-  rangoVision: 15
-  anguloVision: 60
-  capasObstaculos:
-    serializedVersion: 2
-    m_Bits: 1
-  alturaOjosOrco: 1.5
-  alturaObjetivoFrodo: 1
---- !u!114 &1693090679
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1693090674}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7bd9d62b26aa98b4da66a53037d4626f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SensorOidoOrco
-  objetivoFrodo: {fileID: 135324210}
-  rangoOidoCaminar: 5
-  rangoOidoCorrer: 15
---- !u!136 &1693090680
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1693090674}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.5
-  m_Height: 2
-  m_Direction: 1
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!23 &1693090681
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1693090674}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_MaskInteraction: 0
-  m_AdditionalVertexStreams: {fileID: 0}
---- !u!33 &1693090682
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1693090674}
-  m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
---- !u!4 &1693090683
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1693090674}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -17.94318, y: 1, z: 28.02158}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1693090684
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1693090674}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d83e321990b06ab45902a176dfd4f3e6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ActuadorMovimientoOrco
-  velocidadPatrulla: 3.5
-  velocidadAlerta: 6
-  velocidadPersecucion: 8
-  puntosPatrulla:
-  - {fileID: 1602148630}
-  - {fileID: 1901906711}
-  - {fileID: 1927349343}
-  puntosBloqueoSalida:
-  - {fileID: 1828865191}
-  - {fileID: 1190348846}
-  - {fileID: 249234615}
-  pedestalAnillo: {fileID: 458616568}
-  puntoSalida: {fileID: 599910990}
-  objetivoFrodo: {fileID: 135324210}
-  radioBusqueda: 10
-  puntosBusquedaMax: 4
 --- !u!1 &1695229642
 GameObject:
   m_ObjectHideFlags: 0
@@ -29669,11 +29761,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1735338012}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Script: {fileID: 11500000, guid: edc2d805b65a1a242a4a4bfe50997706, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
   speed: 150
-  anguloAbierta: 90
+  anguloAbierta: 270
 --- !u!208 &1735338015
 NavMeshObstacle:
   m_ObjectHideFlags: 0
@@ -32435,11 +32527,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1832568167}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Script: {fileID: 11500000, guid: edc2d805b65a1a242a4a4bfe50997706, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
   speed: 150
-  anguloAbierta: 90
+  anguloAbierta: 270
 --- !u!208 &1832568170
 NavMeshObstacle:
   m_ObjectHideFlags: 0
@@ -33045,6 +33137,240 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1873441309}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1878954790
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1878954800}
+  - component: {fileID: 1878954799}
+  - component: {fileID: 1878954798}
+  - component: {fileID: 1878954797}
+  - component: {fileID: 1878954796}
+  - component: {fileID: 1878954795}
+  - component: {fileID: 1878954794}
+  - component: {fileID: 1878954793}
+  - component: {fileID: 1878954792}
+  - component: {fileID: 1878954791}
+  m_Layer: 0
+  m_Name: Orco2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1878954791
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878954790}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c68f5cc071adffc4a906b714abdb1197, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ActuadorMovimiento
+  velocidadPatrulla: 3.5
+  velocidadAlerta: 6
+  velocidadPersecucion: 8
+--- !u!114 &1878954792
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878954790}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70538accd2895d5449985ac8175bf005, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SensorOido
+  objetivo: {fileID: 135324210}
+  rangoOidoCaminar: 5
+  rangoOidoCorrer: 15
+  intervaloNotificacion: 0.5
+--- !u!114 &1878954793
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878954790}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c90e15c9fb540b4e88c7a4aba0bacf6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CerebroOrco
+  objetivo: {fileID: 135324210}
+  rangoVision: 15
+  anguloVision: 60
+  capasObstaculos:
+    serializedVersion: 2
+    m_Bits: 0
+  alturaOjos: 1.5
+  alturaObjetivo: 1
+  objetoAnillo: {fileID: 458616568}
+--- !u!195 &1878954794
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878954790}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.3
+  m_Speed: 3.5
+  m_Acceleration: 8
+  avoidancePriority: 10
+  m_AngularSpeed: 120
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 1
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 2
+--- !u!114 &1878954795
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878954790}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1dd59152df40b245a67b132f9fd5e80, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SensorVistaOrco
+  mostrarLogs: 0
+--- !u!114 &1878954796
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878954790}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32894f18f66c3e647996e1f1f00d9a7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SensorOidoOrco
+  agentId: Guard_02
+  objetivoFrodo: {fileID: 135324210}
+  distanciaCaptura: 1.2
+  puntosPatrulla:
+  - {fileID: 1304087655}
+  - {fileID: 1417041507}
+  - {fileID: 2125961013}
+  puntoSalida: {fileID: 599910990}
+  puntosBloqueoSalida:
+  - {fileID: 1190348846}
+  - {fileID: 702186069}
+  - {fileID: 2146080284}
+  pedestalAnillo: {fileID: 458616568}
+  tiempoEntreComprobaciones: 30
+  cooldownContractNet: 10
+--- !u!136 &1878954797
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878954790}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.5
+  m_Height: 2
+  m_Direction: 1
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!23 &1878954798
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878954790}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1878954799
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878954790}
+  m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!4 &1878954800
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878954790}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 36, y: 1, z: 35.9}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1890691338
 GameObject:
   m_ObjectHideFlags: 0
@@ -35624,11 +35950,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 2047332533}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Script: {fileID: 11500000, guid: edc2d805b65a1a242a4a4bfe50997706, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
   speed: 150
-  anguloAbierta: 90
+  anguloAbierta: 270
 --- !u!208 &2047332536
 NavMeshObstacle:
   m_ObjectHideFlags: 0
@@ -35870,7 +36196,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 2048561911}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fb44c254b91bca143b02a280aa57e9b7, type: 3}
+  m_Script: {fileID: 11500000, guid: f7c8b54a6e29eca438d0bd098cbb4abc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraFollow
   target: {fileID: 135324210}
@@ -35883,7 +36209,7 @@ MonoBehaviour:
   zoomMax: 20
   rotxInicial: 45
   rotyInicial: 180
-  distanciaCenital: 50
+  distanciaCenital: 40
   anguloCenital: 75
 --- !u!1 &2055282308
 GameObject:
@@ -36535,11 +36861,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 2111731815}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f368ce6908d6ca048955290b55c78d0f, type: 3}
+  m_Script: {fileID: 11500000, guid: edc2d805b65a1a242a4a4bfe50997706, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PuertaInteractiva
   speed: 150
-  anguloAbierta: 90
+  anguloAbierta: 270
 --- !u!1 &2121461359
 GameObject:
   m_ObjectHideFlags: 0
@@ -36907,228 +37233,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2131399671}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &2135347909
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2135347918}
-  - component: {fileID: 2135347917}
-  - component: {fileID: 2135347916}
-  - component: {fileID: 2135347915}
-  - component: {fileID: 2135347914}
-  - component: {fileID: 2135347912}
-  - component: {fileID: 2135347911}
-  - component: {fileID: 2135347910}
-  - component: {fileID: 2135347919}
-  m_Layer: 0
-  m_Name: Orco5
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &2135347910
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2135347909}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 71420d2db48ef6c408e568a4039b52ae, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CerebroOrco
-  objetivoFrodo: {fileID: 135324210}
-  distanciaAtaque: 1.2
-  tiempoGraciaPersecucion: 2
-  tiempoBusqueda: 7
-  tiempoEntreComprobaciones: 30
---- !u!195 &2135347911
-NavMeshAgent:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2135347909}
-  m_Enabled: 1
-  m_AgentTypeID: 0
-  m_Radius: 0.3
-  m_Speed: 3.5
-  m_Acceleration: 8
-  avoidancePriority: 50
-  m_AngularSpeed: 120
-  m_StoppingDistance: 0
-  m_AutoTraverseOffMeshLink: 1
-  m_AutoBraking: 1
-  m_AutoRepath: 1
-  m_Height: 2
-  m_BaseOffset: 1
-  m_WalkableMask: 4294967295
-  m_ObstacleAvoidanceType: 2
---- !u!114 &2135347912
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2135347909}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ca974069099930439c7ebd47648f907, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SensorVistaOrco
-  objetivoFrodo: {fileID: 135324210}
-  elAnillo: {fileID: 458616568}
-  rangoVision: 15
-  anguloVision: 60
-  capasObstaculos:
-    serializedVersion: 2
-    m_Bits: 1
-  alturaOjosOrco: 1.5
-  alturaObjetivoFrodo: 1
---- !u!114 &2135347914
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2135347909}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7bd9d62b26aa98b4da66a53037d4626f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SensorOidoOrco
-  objetivoFrodo: {fileID: 135324210}
-  rangoOidoCaminar: 5
-  rangoOidoCorrer: 15
---- !u!136 &2135347915
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2135347909}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.5
-  m_Height: 2
-  m_Direction: 1
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!23 &2135347916
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2135347909}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_MaskInteraction: 0
-  m_AdditionalVertexStreams: {fileID: 0}
---- !u!33 &2135347917
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2135347909}
-  m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
---- !u!4 &2135347918
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2135347909}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.2, y: 1, z: 12.4}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2135347919
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2135347909}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d83e321990b06ab45902a176dfd4f3e6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ActuadorMovimientoOrco
-  velocidadPatrulla: 3.5
-  velocidadAlerta: 6
-  velocidadPersecucion: 8
-  puntosPatrulla:
-  - {fileID: 857960238}
-  - {fileID: 1258118015}
-  - {fileID: 1815809954}
-  puntosBloqueoSalida:
-  - {fileID: 1828865191}
-  - {fileID: 702186069}
-  - {fileID: 2146080284}
-  pedestalAnillo: {fileID: 458616568}
-  puntoSalida: {fileID: 599910990}
-  objetivoFrodo: {fileID: 135324210}
-  radioBusqueda: 10
-  puntosBusquedaMax: 4
 --- !u!1 &2146080283
 GameObject:
   m_ObjectHideFlags: 0
@@ -37191,12 +37295,13 @@ SceneRoots:
   - {fileID: 2146080284}
   - {fileID: 2048561915}
   - {fileID: 23124709}
-  - {fileID: 361772885}
-  - {fileID: 1397636012}
-  - {fileID: 1693090683}
-  - {fileID: 2135347918}
+  - {fileID: 1878954800}
+  - {fileID: 386436410}
+  - {fileID: 1026528696}
+  - {fileID: 1383182002}
   - {fileID: 135324210}
   - {fileID: 599910990}
   - {fileID: 921615718}
   - {fileID: 472227476}
   - {fileID: 1588009155}
+  - {fileID: 358464103}
