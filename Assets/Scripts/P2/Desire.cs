@@ -60,9 +60,14 @@ public class DesireGenerator
             && creencias.UltimaDeteccionDirecta
             && creencias.FuenteUltimaDeteccion != creencias.MiId)
         {
-            // Alguien lo está viendo ahora — prioridad alta
             float distancia = creencias.DistanciaEstimadaAlLadron();
             float prioridad = Mathf.Lerp(90f, 70f, distancia / 50f);
+
+            // Si alguien ya persigue, reducir prioridad para evitar pile-on
+            // (el resultado emergente es que otro guardia irá a bloquear la salida)
+            if (creencias.AlguienPersiguiendo())
+                prioridad -= 30f;
+
             deseos.Add(new Desire(
                 BehaviorType.Pursuit,
                 prioridad,
@@ -97,7 +102,9 @@ public class DesireGenerator
         }
 
         // === Búsqueda activa (info reciente pero no vemos al ladrón) ===
-        if (!creencias.LadronVisible && creencias.TieneInfoReciente(15f))
+        // Limitada: si ya hay 2+ guardias buscando, no añadir más buscadores
+        if (!creencias.LadronVisible && creencias.TieneInfoReciente(15f)
+            && creencias.GuardiasBuscando() < 2)
         {
             deseos.Add(new Desire(
                 BehaviorType.Search,
@@ -107,9 +114,11 @@ public class DesireGenerator
         }
 
         // === Bloquear salida (anillo robado, nadie bloqueando aún) ===
+        // Prioridad más alta si alguien está persiguiendo — conviene cortar la huida
         if (creencias.AnilloRobado && !creencias.AlguienBloqueandoSalida())
         {
-            deseos.Add(new Desire(BehaviorType.BlockExit, 60f));
+            float prioridadBloqueo = creencias.AlguienPersiguiendo() ? 85f : 60f;
+            deseos.Add(new Desire(BehaviorType.BlockExit, prioridadBloqueo));
         }
 
         // === Investigar posición reportada (info menos reciente) ===

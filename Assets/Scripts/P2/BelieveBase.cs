@@ -175,37 +175,57 @@ public class BeliefBase
         return Vector3.Distance(MiPosicion, UltimaPosicionLadron);
     }
 
-    
+
     public bool AlguienPersiguiendo()
     {
         foreach (var par in EstadosOtrosGuardias)
         {
-            if (par.Value.CurrentState == "pursuit")
+            if (par.Value.CurrentState == BehaviorType.Pursuit.ToString())
                 return true;
         }
         return false;
     }
 
-   
+
     public bool AlguienBloqueandoSalida()
     {
         foreach (var par in EstadosOtrosGuardias)
         {
-            if (par.Value.CurrentState == "block")
+            if (par.Value.CurrentState == BehaviorType.BlockExit.ToString())
                 return true;
         }
         return false;
     }
 
-    
+
     public int GuardiasBuscando()
     {
         int count = 0;
         foreach (var par in EstadosOtrosGuardias)
         {
-            if (par.Value.CurrentState == "search" || par.Value.CurrentState == "investigate")
+            string estado = par.Value.CurrentState;
+            if (estado == BehaviorType.Search.ToString() ||
+                estado == BehaviorType.SearchAssigned.ToString() ||
+                estado == BehaviorType.Investigate.ToString())
                 count++;
         }
         return count;
+    }
+
+    /// <summary>
+    /// Devuelve true si ningún otro guardia conocido está más cerca de la posición dada.
+    /// Usado para decidir quién inicia el Contract-Net sin coordinación centralizada.
+    /// </summary>
+    public bool SoyElMasCercanoA(Vector3 posicion)
+    {
+        float miDistancia = Vector3.Distance(MiPosicion, posicion);
+        foreach (var par in EstadosOtrosGuardias)
+        {
+            if (par.Value.CurrentPosition == null) continue;
+            float suDistancia = Vector3.Distance(par.Value.CurrentPosition.ToVector3(), posicion);
+            if (suDistancia < miDistancia)
+                return false;
+        }
+        return true;
     }
 }

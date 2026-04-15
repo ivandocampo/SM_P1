@@ -35,11 +35,16 @@ public class ContractNetManager
         comunicacion.OnRefuseRecibido    -= AlimentarContratoRefuse;
     }
 
-    // Inicia un Contract Net para distribuir la búsqueda entre los guardias disponibles
+    // Inicia un Contract Net para distribuir la búsqueda entre los guardias disponibles.
+    // Solo lo inicia el guardia más cercano a la última posición del ladrón, evitando
+    // que varios guardias lancen Contract-Nets simultáneos sin coordinación centralizada.
     public void IniciarDistribucionBusqueda()
     {
         if (Time.time - ultimoContractNet < cooldown) return;
         if (contratoActivo != null) return;
+
+        // Cada guardia decide por sí mismo si es el más cercano — emergencia sin coordinador
+        if (!creencias.SoyElMasCercanoA(creencias.UltimaPosicionLadron)) return;
 
         ultimoContractNet = Time.time;
 
