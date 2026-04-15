@@ -40,7 +40,7 @@ public class DesireGenerator
         this.creencias = creencias;
     }
 
-    
+
     public List<Desire> GenerarDeseos()
     {
         List<Desire> deseos = new List<Desire>();
@@ -117,6 +117,7 @@ public class DesireGenerator
         // Prioridad más alta si alguien está persiguiendo — conviene cortar la huida
         if (creencias.AnilloRobado && !creencias.AlguienBloqueandoSalida())
         {
+            // Si alguien ya persigue, bloquear la salida es más urgente que unirse a la persecución
             float prioridadBloqueo = creencias.AlguienPersiguiendo() ? 85f : 60f;
             deseos.Add(new Desire(BehaviorType.BlockExit, prioridadBloqueo));
         }

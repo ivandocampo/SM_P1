@@ -24,6 +24,10 @@ public class IntentionSelector
     private float tiempoMinReconsideracion = 1.5f;
 
     private float tiempoUltimoCambio = 0f;
+    
+    /// <summary>Cooldown adicional después de cambiar de behavior para evitar oscilación rápida.</summary>
+    private float cooldownPostCambio = 2.0f;
+    private float tiempoUltimoBehaviorChange = 0f;
 
     public IntentionSelector(float umbral = 15f, float tiempoMin = 1.5f)
     {
@@ -44,6 +48,22 @@ public class IntentionSelector
                 CambioDeIntencion = true;
             }
             return;
+        }
+
+        // Verificar cooldown post-cambio para evitar oscilación
+        if (Time.time - tiempoUltimoBehaviorChange < cooldownPostCambio)
+        {
+            // Excepción: persecución directa siempre se acepta inmediatamente
+            Desire mejorDeseo = deseos[0];
+            if (mejorDeseo.Nombre == BehaviorType.Pursuit && mejorDeseo.Prioridad >= 100f
+                && IntencionActual?.Nombre != BehaviorType.Pursuit)
+            {
+                // Permitir cambio solo para persecución de alta prioridad
+            }
+            else
+            {
+                return; // En cooldown, mantener intención actual
+            }
         }
 
         // Ordenar deseos por prioridad descendente
@@ -121,6 +141,7 @@ public class IntentionSelector
         IntencionActual = nuevaIntencion;
         CambioDeIntencion = true;
         tiempoUltimoCambio = Time.time;
+        tiempoUltimoBehaviorChange = Time.time; // Registrar cambio de behavior
 
         Debug.Log($"[BDI] Intención cambiada: {anterior} → {nuevaIntencion.Nombre} " +
                   $"(prioridad: {nuevaIntencion.Prioridad:F0})");

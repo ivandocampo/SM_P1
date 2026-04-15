@@ -163,6 +163,9 @@ public class GuardAgent : MonoBehaviour
 
         comunicacion.ProcesarMensajes();
         ActualizarTemporizadorComprobacion();
+        
+        // Limpiar guardias stale cada cierto tiempo
+        creencias.LimpiarGuardiasStale();
 
         List<Desire> deseos = generadorDeseos.GenerarDeseos();
         selectorIntenciones.Seleccionar(deseos, creencias);

@@ -17,7 +17,6 @@ public class SpiderAgent : MonoBehaviour
 
     // === ESTADO ===
     private float ultimoInformeAvistamiento = -100f;
-    //private float ultimoInformeAnillo = -100f;
     private bool anilloReportado = false;
 
     void Start()
@@ -75,33 +74,27 @@ public class SpiderAgent : MonoBehaviour
         {
             sensorOido.OnSonidoDetectado -= ManejarSonidoDetectado;
         }
+
     }
 
     // MANEJADORES DE EVENTOS DE SENSORES
 
-    
     private void ManejarObjetivoVisto(Vector3 posicion)
     {
         EnviarInformeAvistamiento(posicion, true);
     }
 
-    
     private void ManejarObjetivoVisible(Vector3 posicion)
     {
-        // Solo enviar actualización si ha pasado suficiente tiempo
         if (Time.time - ultimoInformeAvistamiento >= cooldownInforme)
-        {
             EnviarInformeAvistamiento(posicion, true);
-        }
     }
 
-   
     private void ManejarObjetivoPerdido()
     {
         BroadcastPredicado(PredicateType.THIEF_LOST);
         Debug.Log($"[{agentId}] Ladrón perdido de vista — informando a guardias");
     }
-
 
     private void ManejarAnilloDesaparecido()
     {
@@ -112,13 +105,10 @@ public class SpiderAgent : MonoBehaviour
         Debug.Log($"[{agentId}] ¡Anillo desaparecido del pedestal! — informando a guardias");
     }
 
-
     private void ManejarSonidoDetectado(Vector3 posicion)
     {
         if (Time.time - ultimoInformeAvistamiento >= cooldownInforme)
-        {
             EnviarInformeAvistamiento(posicion, false);
-        }
     }
 
     // COMUNICACIÓN

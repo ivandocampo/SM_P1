@@ -60,6 +60,13 @@ public class BeliefBase
     public Dictionary<string, GuardStatus> EstadosOtrosGuardias { get; private set; }
         = new Dictionary<string, GuardStatus>();
 
+    /// <summary>Timestamps de la última actualización de cada guardia.</summary>
+    private Dictionary<string, float> ultimaActualizacionGuardias = 
+        new Dictionary<string, float>();
+
+    /// <summary>Tiempo máximo sin actualización antes de considerar un guardia como stale.</summary>
+    private const float TIEMPO_STALE_GUARDIA = 30f;
+
     // TAREAS ASIGNADAS
 
     /// <summary>Tarea de búsqueda asignada vía Contract Net.</summary>
@@ -133,10 +140,43 @@ public class BeliefBase
         if (estado != null && !string.IsNullOrEmpty(estado.GuardId))
         {
             EstadosOtrosGuardias[estado.GuardId] = estado;
+            ultimaActualizacionGuardias[estado.GuardId] = Time.time;
         }
     }
 
-    
+    /// <summary>
+    /// Elimina un guardia del registro de estados (cuando se desconecta o destruye).
+    /// </summary>
+    public void EliminarGuardia(string guardId)
+    {
+        EstadosOtrosGuardias.Remove(guardId);
+        ultimaActualizacionGuardias.Remove(guardId);
+    }
+
+    /// <summary>
+    /// Limpia guardias que no han enviado actualizaciones en mucho tiempo.
+    /// Debe llamarse periódicamente desde el Update del agente.
+    /// </summary>
+    public void LimpiarGuardiasStale()
+    {
+        List<string> guardiasStale = new List<string>();
+        
+        foreach (var kvp in ultimaActualizacionGuardias)
+        {
+            if (Time.time - kvp.Value > TIEMPO_STALE_GUARDIA)
+            {
+                guardiasStale.Add(kvp.Key);
+            }
+        }
+
+        foreach (string guardId in guardiasStale)
+        {
+            Debug.Log($"[{MiId}] Eliminando guardia stale: {guardId}");
+            EliminarGuardia(guardId);
+        }
+    }
+
+
     public void AsignarTarea(SearchTask tarea, string conversacionId, string asignador)
     {
         TareaAsignada = tarea;

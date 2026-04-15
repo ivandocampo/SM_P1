@@ -30,7 +30,6 @@ public static class ContentLanguage
         return JsonUtility.ToJson(request);
     }
 
-    
     public static string EncodePredicate(PredicateType predicate, string extraData = "")
     {
         PredicateInfo info = new PredicateInfo
@@ -109,4 +108,5 @@ public static class ContentLanguage
     {
         return !string.IsNullOrEmpty(json) && json.Contains("\"GuardId\"");
     }
+
 }

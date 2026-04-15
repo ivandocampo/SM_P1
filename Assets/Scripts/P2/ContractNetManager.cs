@@ -44,7 +44,47 @@ public class ContractNetManager
         if (contratoActivo != null) return;
 
         // Cada guardia decide por sí mismo si es el más cercano — emergencia sin coordinador
-        if (!creencias.SoyElMasCercanoA(creencias.UltimaPosicionLadron)) return;
+        // Añadido tiebreaker: si hay empate en distancia, usa el ID del agente como desempate
+        if (!creencias.SoyElMasCercanoA(creencias.UltimaPosicionLadron))
+        {
+            // Tiebreaker: si no soy el más cercano por posición, verifico si mi ID es menor
+            // Esto evita que múltiples guardias inicien Contract-Nets simultáneos
+            float miDistancia = Vector3.Distance(creencias.MiPosicion, creencias.UltimaPosicionLadron);
+            bool hayEmpate = true;
+            
+            foreach (var par in creencias.EstadosOtrosGuardias)
+            {
+                if (par.Value.CurrentPosition != null)
+                {
+                    float suDistancia = Vector3.Distance(par.Value.CurrentPosition.ToVector3(), creencias.UltimaPosicionLadron);
+                    if (suDistancia < miDistancia - 0.5f) // Margen de 0.5 para evitar ruido
+                    {
+                        hayEmpate = false;
+                        break;
+                    }
+                }
+            }
+            
+            // Si hay empate real (distancias similares), usar ID como tiebreaker
+            if (hayEmpate)
+            {
+                List<string> otrosGuardias = AgentRegistry.Instance
+                    .ObtenerOtrosIdsPorTipo("guard", agentId);
+                
+                foreach (string otroId in otrosGuardias)
+                {
+                    // Comparación lexicográfica de IDs como tiebreaker determinista
+                    if (string.Compare(agentId, otroId) > 0)
+                    {
+                        return; // Otro guardia tiene prioridad por ID
+                    }
+                }
+            }
+            else
+            {
+                return; // Hay un guardia claramente más cercano
+            }
+        }
 
         ultimoContractNet = Time.time;
 

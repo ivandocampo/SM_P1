@@ -10,9 +10,15 @@ public class ComunicacionAgente : MonoBehaviour
     public string TipoAgente { get; private set; }
 
     [SerializeField] private int maxMensajesPorFrame = 2;
+    [SerializeField] private int maxBuzonSize = 100;
+    [SerializeField] private int maxConversaciones = 50;
 
     private Queue<ACLMessage> buzonEntrada = new Queue<ACLMessage>();
     private int contadorConversaciones = 0;
+
+    // Historial de conversaciones completas
+    private Dictionary<string, List<ACLMessage>> historialConversaciones = 
+        new Dictionary<string, List<ACLMessage>>();
 
     // Eventos — el cerebro del agente se suscribe a estos
     public event Action<ACLMessage> OnInformRecibido;
@@ -26,6 +32,7 @@ public class ComunicacionAgente : MonoBehaviour
     public event Action<ACLMessage> OnPropuestaRecibida;
     public event Action<ACLMessage> OnPropuestaAceptada;
     public event Action<ACLMessage> OnPropuestaRechazada;
+    
 
     public void Inicializar(string id, string tipo)
     {
@@ -34,10 +41,74 @@ public class ComunicacionAgente : MonoBehaviour
         AgentRegistry.Instance?.Registrar(AgentId, TipoAgente, this);
     }
 
-    void OnDestroy() => AgentRegistry.Instance?.Desregistrar(AgentId);
+    void OnDestroy()
+    {
+        AgentRegistry.Instance?.Desregistrar(AgentId);
+        historialConversaciones.Clear();
+    }
 
     // Depositar un mensaje en el buzón (llamado por el remitente)
-    public void RecibirMensaje(ACLMessage mensaje) => buzonEntrada.Enqueue(mensaje);
+    public void RecibirMensaje(ACLMessage mensaje)
+    {
+        // Limitar tamaño del buzón para evitar memory leaks
+        if (buzonEntrada.Count >= maxBuzonSize)
+        {
+            Debug.LogWarning($"[{AgentId}] Buzón lleno ({maxBuzonSize}). Descartando mensaje antiguo.");
+            buzonEntrada.Dequeue();
+        }
+        buzonEntrada.Enqueue(mensaje);
+
+        // Registrar en historial de conversaciones
+        if (!string.IsNullOrEmpty(mensaje.ConversationId))
+        {
+            RegistrarEnConversacion(mensaje);
+        }
+    }
+
+    private void RegistrarEnConversacion(ACLMessage mensaje)
+    {
+        string convId = mensaje.ConversationId;
+        
+        // Limitar número de conversaciones almacenadas
+        if (historialConversaciones.Count >= maxConversaciones)
+        {
+            // Eliminar la conversación más antigua
+            string masAntigua = null;
+            foreach (var key in historialConversaciones.Keys)
+            {
+                masAntigua = key;
+                break;
+            }
+            if (masAntigua != null)
+                historialConversaciones.Remove(masAntigua);
+        }
+
+        if (!historialConversaciones.ContainsKey(convId))
+        {
+            historialConversaciones[convId] = new List<ACLMessage>();
+        }
+        historialConversaciones[convId].Add(mensaje);
+    }
+
+    // Obtener historial completo de una conversación
+    public List<ACLMessage> ObtenerHistorialConversacion(string conversationId)
+    {
+        if (historialConversaciones.TryGetValue(conversationId, out var historial))
+            return new List<ACLMessage>(historial);
+        return new List<ACLMessage>();
+    }
+
+    // Obtener todas las conversaciones activas
+    public List<string> ObtenerConversacionesActivas()
+    {
+        return new List<string>(historialConversaciones.Keys);
+    }
+
+    // Verificar si una conversación existe
+    public bool TieneConversacion(string conversationId)
+    {
+        return historialConversaciones.ContainsKey(conversationId);
+    }
 
     // Procesar hasta maxMensajesPorFrame mensajes (llamar desde Update del agente)
     public void ProcesarMensajes()
@@ -56,6 +127,7 @@ public class ComunicacionAgente : MonoBehaviour
         {
             case ACLPerformative.INFORM:          OnInformRecibido?.Invoke(msg);     break;
             case ACLPerformative.INFORM_DONE:     OnDoneRecibido?.Invoke(msg);       break;
+            case ACLPerformative.INFORM_RESULT:   OnInformRecibido?.Invoke(msg);     break;
             case ACLPerformative.REQUEST:         OnRequestRecibido?.Invoke(msg);    break;
             case ACLPerformative.AGREE:           OnAgreeRecibido?.Invoke(msg);      break;
             case ACLPerformative.REFUSE:          OnRefuseRecibido?.Invoke(msg);     break;
@@ -66,6 +138,7 @@ public class ComunicacionAgente : MonoBehaviour
             case ACLPerformative.PROPOSE:         OnPropuestaRecibida?.Invoke(msg);  break;
             case ACLPerformative.ACCEPT_PROPOSAL: OnPropuestaAceptada?.Invoke(msg);  break;
             case ACLPerformative.REJECT_PROPOSAL: OnPropuestaRechazada?.Invoke(msg); break;
+            
         }
     }
 

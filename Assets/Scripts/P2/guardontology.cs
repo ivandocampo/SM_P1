@@ -117,3 +117,4 @@ public class ActionRequest
     public Position TargetPosition; // Posición objetivo (si aplica)
     public float Urgency;           // 0.0 - 1.0
 }
+

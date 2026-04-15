@@ -23,5 +23,6 @@ public enum ACLPerformative
 
     // === Control ===
     CANCEL,             // Cancelar una solicitud previa
-    NOT_UNDERSTOOD      // Indicar que el mensaje no se comprendió
+    NOT_UNDERSTOOD,     // Indicar que el mensaje no se comprendió
+
 }
