@@ -27,6 +27,8 @@ public class SensorVision : MonoBehaviour
     /// <summary>Indica si el objetivo es visible en este momento.</summary>
     public bool ObjetivoEsVisible { get; private set; } = false;
 
+    public bool ObjetivoVisibleConAnillo { get; private set; } = false;
+
     private bool eraVisible = false;
     private bool anilloDesaparecidoNotificado = false;
     private Vector3 posicionOriginalAnillo;
@@ -47,6 +49,10 @@ public class SensorVision : MonoBehaviour
 
         bool esVisible = ComprobarVisibilidad();
         ObjetivoEsVisible = esVisible;
+        ObjetivoVisibleConAnillo = esVisible &&
+                                   cerebroFrodo != null &&
+                                   cerebroFrodo.TieneElAnillo &&
+                                   !cerebroFrodo.usandoAnillo;
 
         // Transición: no visible → visible (primera detección)
         if (esVisible && !eraVisible)
@@ -62,6 +68,10 @@ public class SensorVision : MonoBehaviour
         else if (esVisible)
         {
             OnObjetivoVisible?.Invoke(objetivo.position);
+        }
+        else
+        {
+            ObjetivoVisibleConAnillo = false;
         }
 
         eraVisible = esVisible;

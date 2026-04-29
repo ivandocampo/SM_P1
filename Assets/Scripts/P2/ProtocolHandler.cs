@@ -1,7 +1,7 @@
 using UnityEngine;
 
-// Gestiona la construcción y el manejo de mensajes FIPA-ACL para un guardia.
-// Actúa como intermediario entre el cerebro del agente (GuardAgent) y el buzón (ComunicacionAgente).
+// Gestiona la construccion y el manejo de mensajes FIPA-ACL para un guardia.
+// Actua como intermediario entre el cerebro del agente (GuardAgent) y el buzon (ComunicacionAgente).
 public class ProtocolHandler
 {
     private BeliefBase creencias;
@@ -12,18 +12,18 @@ public class ProtocolHandler
     public ProtocolHandler(BeliefBase creencias, ComunicacionAgente comunicacion,
                            IntentionSelector selector, string id)
     {
-        this.creencias          = creencias;
-        this.comunicacion       = comunicacion;
+        this.creencias = creencias;
+        this.comunicacion = comunicacion;
         this.selectorIntenciones = selector;
-        this.agentId            = id;
+        this.agentId = id;
     }
 
-    // CONSTRUCTORES DE MENSAJES — forman y envían mensajes comunes
+    // CONSTRUCTORES DE MENSAJES
 
     public void InformarAvistamiento(ThiefSighting avistamiento)
     {
         ACLMessage msg = new ACLMessage(ACLPerformative.INFORM, agentId, "");
-        msg.Content  = ContentLanguage.Encode(avistamiento);
+        msg.Content = ContentLanguage.Encode(avistamiento);
         msg.Protocol = "fipa-inform";
         comunicacion.Broadcast(msg);
     }
@@ -31,7 +31,7 @@ public class ProtocolHandler
     public void InformarPredicado(PredicateType predicado, string extraData = "")
     {
         ACLMessage msg = new ACLMessage(ACLPerformative.INFORM, agentId, "");
-        msg.Content  = ContentLanguage.EncodePredicate(predicado, extraData);
+        msg.Content = ContentLanguage.EncodePredicate(predicado, extraData);
         msg.Protocol = "fipa-inform";
         comunicacion.Broadcast(msg);
     }
@@ -50,7 +50,7 @@ public class ProtocolHandler
     {
         ACLMessage done = new ACLMessage(ACLPerformative.INFORM_DONE, agentId, solicitante);
         done.ConversationId = convId;
-        done.Protocol       = "fipa-request";
+        done.Protocol = "fipa-request";
         comunicacion.Enviar(done);
     }
 
@@ -75,7 +75,7 @@ public class ProtocolHandler
         comunicacion.Enviar(refuse);
     }
 
-    // MANEJADORES — procesan mensajes entrantes y actualizan creencias / responden
+    // MANEJADORES
 
     public void ManejarInform(ACLMessage msg)
     {
@@ -88,7 +88,9 @@ public class ProtocolHandler
                     avistamiento.Location.ToVector3(),
                     avistamiento.Timestamp,
                     avistamiento.DirectVision,
-                    avistamiento.ReportedBy
+                    avistamiento.ReportedBy,
+                    avistamiento.Direction != null ? avistamiento.Direction.ToVector3() : Vector3.zero,
+                    avistamiento.Direction != null
                 );
                 Debug.Log($"[{agentId}] Avistamiento recibido de {msg.Sender} en {avistamiento.Location}");
             }
@@ -109,7 +111,15 @@ public class ProtocolHandler
             if (info.Predicate == PredicateType.RING_STOLEN.ToString())
             {
                 creencias.MarcarAnilloRobado();
-                Debug.Log($"[{agentId}] Anillo robado — informado por {msg.Sender}");
+                Debug.Log($"[{agentId}] Anillo robado - informado por {msg.Sender}");
+            }
+            else if (info.Predicate == PredicateType.THIEF_LOST.ToString())
+            {
+                // El emisor ha perdido el rastro: ya no está persiguiendo.
+                // Actualizar su estado para que otros guardias no crean que alguien sigue en persecución
+                // (evita falsos positivos en AlguienPersiguiendo() mientras llega el próximo heartbeat).
+                creencias.ActualizarDisponibilidadGuardia(msg.Sender, true, BehaviorType.Search.ToString());
+                Debug.Log($"[{agentId}] {msg.Sender} perdió al ladrón");
             }
         }
     }
@@ -142,10 +152,10 @@ public class ProtocolHandler
     {
         GuardStatus estado = new GuardStatus
         {
-            GuardId         = agentId,
+            GuardId = agentId,
             CurrentPosition = new Position(creencias.MiPosicion),
-            CurrentState    = creencias.EstadoActual.ToString(),
-            IsAvailable     = selectorIntenciones.EstaDisponible()
+            CurrentState = creencias.EstadoActual.ToString(),
+            IsAvailable = selectorIntenciones.EstaDisponible()
         };
         ResponderQuery(msg, ContentLanguage.Encode(estado));
     }
@@ -165,11 +175,16 @@ public class ProtocolHandler
             return;
         }
 
-        float distancia = Vector3.Distance(creencias.MiPosicion, tarea.TargetArea.ToVector3());
+        Vector3 objetivoTarea = tarea.TargetArea.ToVector3();
+        Vector3[] puntosZona = creencias.ObtenerPuntosZona(tarea.ZoneId);
+        if (puntosZona != null && puntosZona.Length > 0)
+            objetivoTarea = creencias.ObtenerCentroZona(tarea.ZoneId);
+
+        float distancia = Vector3.Distance(creencias.MiPosicion, objetivoTarea);
         ProposalData propuesta = new ProposalData
         {
-            GuardId       = agentId,
-            Cost          = distancia,
+            GuardId = agentId,
+            Cost = distancia,
             EstimatedTime = distancia / actuador.velocidadAlerta
         };
         ResponderCFPConPropuesta(msg, propuesta);
@@ -187,14 +202,26 @@ public class ProtocolHandler
     }
 
     public void ManejarPropuestaRechazada(ACLMessage msg)
-        => Debug.Log($"[{agentId}] Propuesta rechazada por {msg.Sender}");
+    {
+        creencias.ActualizarDisponibilidadGuardia(msg.Sender, true);
+        Debug.Log($"[{agentId}] Propuesta rechazada por {msg.Sender}");
+    }
 
     public void ManejarDone(ACLMessage msg)
-        => Debug.Log($"[{agentId}] Tarea completada confirmada por {msg.Sender}");
+    {
+        creencias.ActualizarDisponibilidadGuardia(msg.Sender, true, BehaviorType.Patrol.ToString());
+        Debug.Log($"[{agentId}] Tarea completada confirmada por {msg.Sender}");
+    }
 
     public void ManejarAgree(ACLMessage msg)
-        => Debug.Log($"[{agentId}] {msg.Sender} aceptó nuestra solicitud");
+    {
+        creencias.ActualizarDisponibilidadGuardia(msg.Sender, false);
+        Debug.Log($"[{agentId}] {msg.Sender} acepto nuestra solicitud");
+    }
 
     public void ManejarRefuse(ACLMessage msg)
-        => Debug.Log($"[{agentId}] {msg.Sender} rechazó nuestra solicitud: {msg.Content}");
+    {
+        creencias.ActualizarDisponibilidadGuardia(msg.Sender, false);
+        Debug.Log($"[{agentId}] {msg.Sender} rechazo nuestra solicitud: {msg.Content}");
+    }
 }

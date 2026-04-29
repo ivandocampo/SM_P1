@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 [System.Serializable]
@@ -30,6 +32,11 @@ public class BeliefBase
     /// <summary>Antigüedad en segundos de la última información sobre el ladrón.</summary>
     public float AntiguedadInfoLadron => Time.time - TiempoUltimaDeteccion;
 
+    /// <summary>Dirección más reciente conocida del ladrón.</summary>
+    public Vector3 UltimaDireccionLadron { get; private set; } = Vector3.zero;
+
+    public bool TieneDireccionLadron { get; private set; } = false;
+
     // CREENCIAS SOBRE EL ANILLO
 
     /// <summary>Si se sabe que el anillo ha sido robado.</summary>
@@ -37,6 +44,9 @@ public class BeliefBase
 
     /// <summary>Timestamp de cuando se supo que el anillo fue robado.</summary>
     public float TiempoAnilloRobado { get; private set; } = -100f;
+
+    /// <summary>Si algún guardia ha visto directamente al ladrón llevando el anillo.</summary>
+    public bool LadronVistoConAnillo { get; private set; } = false;
 
     // CREENCIAS SOBRE EL PROPIO AGENTE
 
@@ -46,6 +56,16 @@ public class BeliefBase
     /// <summary>Posición actual del agente (actualizada cada frame).</summary>
     public Vector3 MiPosicion { get; set; }
 
+    /// <summary>Posición del pedestal, conocida por el propio agente.</summary>
+    public Vector3 PosicionPedestal { get; set; } = Vector3.zero;
+
+    public bool TienePosicionPedestal { get; set; } = false;
+
+    /// <summary>Posición de la salida del mapa, conocida por el propio agente.</summary>
+    public Vector3 PosicionSalida { get; set; } = Vector3.zero;
+
+    public bool TienePosicionSalida { get; set; } = false;
+
     /// <summary>Nombre de la intención/estado actual.</summary>
     public BehaviorType EstadoActual { get; set; } = BehaviorType.None;
 
@@ -53,12 +73,20 @@ public class BeliefBase
     public bool Disponible => EstadoActual == BehaviorType.Patrol || EstadoActual == BehaviorType.None;
 
     public bool DebeComprobarPedestal { get; set; } = false;
+    public bool DebeBuscarAlrededorPedestal { get; set; } = false;
+    public float UltimoChequeoPedestal { get; private set; } = -100f;
 
     // CREENCIAS SOBRE OTROS AGENTES
 
     /// <summary>Estados reportados por otros guardias.</summary>
     public Dictionary<string, GuardStatus> EstadosOtrosGuardias { get; private set; }
         = new Dictionary<string, GuardStatus>();
+
+    private Dictionary<string, Vector3[]> zonasBusquedaRegistradas =
+        new Dictionary<string, Vector3[]>();
+
+    /// <summary>Timestamp de la última vez que el propio agente terminó de buscar en cada zona.</summary>
+    private Dictionary<string, float> ultimaBusquedaPorZona = new Dictionary<string, float>();
 
     /// <summary>Timestamps de la última actualización de cada guardia.</summary>
     private Dictionary<string, float> ultimaActualizacionGuardias = 
@@ -103,7 +131,7 @@ public class BeliefBase
 
     
     public void ActualizarPosicionLadron(Vector3 posicion, float timestamp,
-        bool visionDirecta, string fuente)
+        bool visionDirecta, string fuente, Vector3 direccion = default(Vector3), bool tieneDireccion = false)
     {
         // Solo aceptar información más reciente
         if (timestamp <= TiempoUltimaDeteccion) return;
@@ -112,6 +140,12 @@ public class BeliefBase
         TiempoUltimaDeteccion = timestamp;
         UltimaDeteccionDirecta = visionDirecta;
         FuenteUltimaDeteccion = fuente;
+
+        if (tieneDireccion && direccion.sqrMagnitude > 0.01f)
+        {
+            UltimaDireccionLadron = direccion.normalized;
+            TieneDireccionLadron = true;
+        }
 
         // Solo marcar como visible si es visión directa propia
         if (visionDirecta && fuente == MiId)
@@ -131,7 +165,25 @@ public class BeliefBase
         {
             AnilloRobado = true;
             TiempoAnilloRobado = Time.time;
+            // El robo cambia el escenario radicalmente: las zonas exit pasan a ser
+            // las únicas relevantes, así que el tracking previo de zonas generales
+            // ya no aporta y conviene partir de cero.
+            ultimaBusquedaPorZona.Clear();
         }
+    }
+
+
+    public void RegistrarChequeoPedestal()
+    {
+        UltimoChequeoPedestal = Time.time;
+        DebeComprobarPedestal = false;
+    }
+
+
+    public void MarcarLadronConAnillo()
+    {
+        LadronVistoConAnillo = true;
+        MarcarAnilloRobado();
     }
 
     
@@ -142,6 +194,102 @@ public class BeliefBase
             EstadosOtrosGuardias[estado.GuardId] = estado;
             ultimaActualizacionGuardias[estado.GuardId] = Time.time;
         }
+    }
+
+    public void ActualizarDisponibilidadGuardia(string guardId, bool disponible, string nuevoEstado = null)
+    {
+        if (string.IsNullOrEmpty(guardId)) return;
+        if (!EstadosOtrosGuardias.TryGetValue(guardId, out GuardStatus estado)) return;
+
+        estado.IsAvailable = disponible;
+        if (!string.IsNullOrEmpty(nuevoEstado))
+            estado.CurrentState = nuevoEstado;
+
+        ultimaActualizacionGuardias[guardId] = Time.time;
+    }
+
+    public void RegistrarZonaBusqueda(string zoneId, Vector3[] puntos)
+    {
+        if (string.IsNullOrEmpty(zoneId) || puntos == null || puntos.Length == 0) return;
+        zonasBusquedaRegistradas[zoneId] = puntos;
+    }
+
+    public Vector3[] ObtenerPuntosZona(string zoneId)
+    {
+        if (string.IsNullOrEmpty(zoneId)) return null;
+        return zonasBusquedaRegistradas.TryGetValue(zoneId, out Vector3[] puntos) ? puntos : null;
+    }
+
+    public List<string> ObtenerIdsZonasBusqueda()
+    {
+        return new List<string>(zonasBusquedaRegistradas.Keys);
+    }
+
+    public Vector3 ObtenerCentroZona(string zoneId)
+    {
+        Vector3[] puntos = ObtenerPuntosZona(zoneId);
+        if (puntos == null || puntos.Length == 0) return Vector3.zero;
+
+        Vector3 centro = Vector3.zero;
+        foreach (Vector3 punto in puntos)
+            centro += punto;
+
+        return centro / puntos.Length;
+    }
+
+    /// <summary>Marca la zona como recién barrida por este agente.</summary>
+    public void RegistrarBusquedaCompletada(string zoneId)
+    {
+        if (!string.IsNullOrEmpty(zoneId))
+            ultimaBusquedaPorZona[zoneId] = Time.time;
+    }
+
+    /// <summary>
+    /// Devuelve el timestamp de la última búsqueda completa de la zona, o un valor
+    /// muy bajo si nunca se buscó. Permite priorizar zonas no rastreadas recientemente.
+    /// </summary>
+    public float ObtenerTiempoUltimaBusqueda(string zoneId)
+    {
+        return ultimaBusquedaPorZona.TryGetValue(zoneId, out float t) ? t : -100f;
+    }
+
+    /// <summary>Conjunto de zonas que otros guardias declaran cubrir actualmente.</summary>
+    public HashSet<string> ObtenerZonasCubiertasPorOtros()
+    {
+        HashSet<string> cubiertas = new HashSet<string>();
+        foreach (var par in EstadosOtrosGuardias)
+        {
+            string zona = par.Value.CurrentZone;
+            if (!string.IsNullOrEmpty(zona))
+                cubiertas.Add(zona);
+        }
+        return cubiertas;
+    }
+
+    /// <summary>
+    /// Devuelve una zona que ningún otro guardia esté cubriendo, priorizando
+    /// las que llevan más tiempo sin barrer y, en caso de empate, las más cercanas.
+    /// Si soloExit=true filtra a zonas Exit_*; si no hay disponibles cae a todas.
+    /// </summary>
+    public string ObtenerZonaSinCubrir(bool soloExit)
+    {
+        HashSet<string> cubiertas = ObtenerZonasCubiertasPorOtros();
+
+        IEnumerable<string> candidatas = ObtenerIdsZonasBusqueda()
+            .Where(z => !cubiertas.Contains(z));
+
+        if (soloExit)
+        {
+            var exit = candidatas
+                .Where(z => z.StartsWith("Exit_", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (exit.Count > 0) candidatas = exit;
+        }
+
+        return candidatas
+            .OrderBy(z => ObtenerTiempoUltimaBusqueda(z))
+            .ThenBy(z => Vector3.Distance(ObtenerCentroZona(z), MiPosicion))
+            .FirstOrDefault();
     }
 
     /// <summary>
@@ -226,6 +374,17 @@ public class BeliefBase
         return false;
     }
 
+    public int GuardiasPersiguiendo()
+    {
+        int count = 0;
+        foreach (var par in EstadosOtrosGuardias)
+        {
+            if (par.Value.CurrentState == BehaviorType.Pursuit.ToString())
+                count++;
+        }
+        return count;
+    }
+
 
     public bool AlguienBloqueandoSalida()
     {
@@ -233,6 +392,31 @@ public class BeliefBase
         {
             if (par.Value.CurrentState == BehaviorType.BlockExit.ToString())
                 return true;
+        }
+        return false;
+    }
+
+    public int GuardiasBloqueando()
+    {
+        int count = 0;
+        foreach (var par in EstadosOtrosGuardias)
+        {
+            if (par.Value.CurrentState == BehaviorType.BlockExit.ToString())
+                count++;
+        }
+        return count;
+    }
+
+
+    public bool AlguienGuardandoPedestal()
+    {
+        foreach (var par in EstadosOtrosGuardias)
+        {
+            string estado = par.Value.CurrentState;
+            if (estado == BehaviorType.CheckPedestal.ToString())
+            {
+                return true;
+            }
         }
         return false;
     }
@@ -245,8 +429,7 @@ public class BeliefBase
         {
             string estado = par.Value.CurrentState;
             if (estado == BehaviorType.Search.ToString() ||
-                estado == BehaviorType.SearchAssigned.ToString() ||
-                estado == BehaviorType.Investigate.ToString())
+                estado == BehaviorType.SearchAssigned.ToString())
                 count++;
         }
         return count;
@@ -268,4 +451,5 @@ public class BeliefBase
         }
         return true;
     }
+
 }

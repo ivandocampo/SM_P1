@@ -109,12 +109,25 @@ public class SearchBehavior : IBehavior
         tiempoAtascado = 0f;
         posicionAnterior = actuador.transform.position;
 
-        // Generar puntos de búsqueda alrededor de la última posición del ladrón
+        // Sesgar la búsqueda hacia delante si conocemos la dirección de huida.
         Vector3 centro = creencias.UltimaPosicionLadron;
+        float radioActual = radioBusqueda;
+
+        if (creencias.DebeBuscarAlrededorPedestal && creencias.TienePosicionPedestal)
+        {
+            centro = creencias.PosicionPedestal;
+            radioActual = radioBusqueda * 0.5f;
+            creencias.DebeBuscarAlrededorPedestal = false;
+        }
+        else if (creencias.TieneDireccionLadron)
+        {
+            centro += creencias.UltimaDireccionLadron * (radioBusqueda * 0.5f);
+        }
+
         puntosBusqueda = new Vector3[maxPuntos];
         for (int i = 0; i < maxPuntos; i++)
         {
-            puntosBusqueda[i] = actuador.GenerarPuntoAleatorio(centro, radioBusqueda);
+            puntosBusqueda[i] = actuador.GenerarPuntoAleatorio(centro, radioActual);
         }
 
         if (puntosBusqueda.Length > 0)
@@ -211,52 +224,6 @@ public class BlockExitBehavior : IBehavior
     public void Detener(ActuadorMovimiento actuador) { }
 }
 
-// INVESTIGAR — Ir a una posición reportada y escanear
-
-[System.Serializable]
-public class InvestigateBehavior : IBehavior
-{
-    private Vector3 posicionObjetivo;
-    private bool haLlegado = false;
-    private float tiempoEscaneo = 3f;
-    private float temporizadorEscaneo = 0f;
-
-    public InvestigateBehavior(float tiempoEscaneo = 3f)
-    {
-        this.tiempoEscaneo = tiempoEscaneo;
-    }
-
-    public void Iniciar(BeliefBase creencias, ActuadorMovimiento actuador)
-    {
-        posicionObjetivo = creencias.UltimaPosicionLadron;
-        haLlegado = false;
-        temporizadorEscaneo = 0f;
-        actuador.SetDestino(posicionObjetivo, TipoVelocidad.Alerta);
-    }
-
-    public bool Ejecutar(BeliefBase creencias, ActuadorMovimiento actuador)
-    {
-        if (!haLlegado)
-        {
-            if (actuador.HaLlegado(2f))
-            {
-                haLlegado = true;
-                actuador.Detener();
-            }
-            return false;
-        }
-
-        // Fase de escaneo — simplemente esperar (los sensores harán su trabajo)
-        temporizadorEscaneo += Time.deltaTime;
-        // Rotar lentamente para escanear el área
-        actuador.transform.Rotate(0, 90f * Time.deltaTime, 0);
-
-        return temporizadorEscaneo >= tiempoEscaneo;
-    }
-
-    public void Detener(ActuadorMovimiento actuador) { }
-}
-
 // COMPROBAR PEDESTAL — Ir al pedestal y verificar el anillo
 
 [System.Serializable]
@@ -305,14 +272,16 @@ public class SearchAssignedBehavior : IBehavior
             return;
         }
 
-        Vector3 centro = tarea.TargetArea.ToVector3();
-        float radio = tarea.Radius;
-        int numPuntos = 5;
-
-        puntosBusqueda = new Vector3[numPuntos];
-        for (int i = 0; i < numPuntos; i++)
+        Vector3[] puntosZona = creencias.ObtenerPuntosZona(tarea.ZoneId);
+        if (puntosZona != null && puntosZona.Length > 0)
         {
-            puntosBusqueda[i] = actuador.GenerarPuntoAleatorio(centro, radio);
+            puntosBusqueda = puntosZona;
+        }
+        else
+        {
+            puntosBusqueda = new Vector3[0];
+            Debug.LogWarning($"[SearchAssigned] Zona no valida o sin puntos: '{tarea.ZoneId}'");
+            return;
         }
 
         if (puntosBusqueda.Length > 0)
@@ -349,7 +318,6 @@ public enum BehaviorType
     Search,
     SearchAssigned,
     BlockExit,
-    Investigate,
     CheckPedestal,
     None
 }

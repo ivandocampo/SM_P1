@@ -38,6 +38,7 @@ public class Position
 public class ThiefSighting
 {
     public Position Location;
+    public Position Direction;
     public float Timestamp;
     public string ReportedBy;      // ID del agente que lo detectó
     public bool DirectVision;      // true = visto, false = oído
@@ -49,6 +50,7 @@ public class ThiefSighting
 public class SearchTask
 {
     public string TaskId;
+    public string ZoneId;
     public Position TargetArea;     // Centro de la zona a buscar
     public float Radius;            // Radio de búsqueda
     public float Urgency;           // 0.0 - 1.0, influye en la prioridad
@@ -62,6 +64,7 @@ public class GuardStatus
     public Position CurrentPosition;
     public string CurrentState;     // "patrol", "pursuit", "search", "block", "investigate"
     public bool IsAvailable;        // Si puede aceptar nuevas tareas
+    public string CurrentZone;      // Zona asignada actualmente (vacío si no tiene)
 }
 
 

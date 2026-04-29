@@ -46,41 +46,33 @@ public class DesireGenerator
         List<Desire> deseos = new List<Desire>();
 
         // === PRIORIDAD MÁXIMA: Persecución directa ===
+        // Equipo de persecución emergente con tamaño máximo 2: si soy el más cercano
+        // o aún hay hueco entre los que ya persiguen, me uno; si no, dejo que otros
+        // mantengan la cobertura del mapa (búsqueda, bloqueo de salida, etc.).
         if (creencias.LadronVisible)
         {
-            deseos.Add(new Desire(
-                BehaviorType.Pursuit,
-                100f,
-                creencias.UltimaPosicionLadron
-            ));
-        }
+            const int MAX_PERSEGUIDORES = 2;
+            bool soyMejorPerseguidor = !creencias.AlguienPersiguiendo()
+                || creencias.SoyElMasCercanoA(creencias.UltimaPosicionLadron);
 
-        // === Persecución por reporte reciente de otro agente ===
-        if (!creencias.LadronVisible && creencias.TieneInfoReciente(5f)
-            && creencias.UltimaDeteccionDirecta
-            && creencias.FuenteUltimaDeteccion != creencias.MiId)
-        {
-            float distancia = creencias.DistanciaEstimadaAlLadron();
-            float prioridad = Mathf.Lerp(90f, 70f, distancia / 50f);
-
-            // Si alguien ya persigue, reducir prioridad para evitar pile-on
-            // (el resultado emergente es que otro guardia irá a bloquear la salida)
-            if (creencias.AlguienPersiguiendo())
-                prioridad -= 30f;
-
-            deseos.Add(new Desire(
-                BehaviorType.Pursuit,
-                prioridad,
-                creencias.UltimaPosicionLadron
-            ));
+            if (soyMejorPerseguidor || creencias.GuardiasPersiguiendo() < MAX_PERSEGUIDORES)
+            {
+                deseos.Add(new Desire(
+                    BehaviorType.Pursuit,
+                    100f,
+                    creencias.UltimaPosicionLadron
+                ));
+            }
         }
 
         // === Tarea asignada vía Contract Net ===
+        // Prioridad 85 para superar a CheckPedestal(82) — un guardia que acepta una zona
+        // debe ejecutarla, no quedarse en CheckPedestal por ser el más cercano al pedestal.
         if (creencias.TieneTareaAsignada)
         {
             deseos.Add(new Desire(
                 BehaviorType.SearchAssigned,
-                80f,
+                85f,
                 creencias.TareaAsignada.TargetArea.ToVector3(),
                 creencias.ConversacionTareaAsignada
             ));
@@ -96,15 +88,16 @@ public class DesireGenerator
 
             BehaviorType nombreDeseo = accion == ActionType.BLOCK_EXIT.ToString() ? BehaviorType.BlockExit :
                                  accion == ActionType.SEARCH_AREA.ToString() ? BehaviorType.SearchAssigned :
-                                 BehaviorType.Investigate;
+                                 BehaviorType.Search;
 
             deseos.Add(new Desire(nombreDeseo, 75f, pos, creencias.ConversacionRequest));
         }
 
         // === Búsqueda activa (info reciente pero no vemos al ladrón) ===
         // Limitada: si ya hay 2+ guardias buscando, no añadir más buscadores
+        int maxGuardiasBuscando = creencias.AnilloRobado ? 3 : 2;
         if (!creencias.LadronVisible && creencias.TieneInfoReciente(15f)
-            && creencias.GuardiasBuscando() < 2)
+            && creencias.GuardiasBuscando() < maxGuardiasBuscando)
         {
             deseos.Add(new Desire(
                 BehaviorType.Search,
@@ -113,21 +106,37 @@ public class DesireGenerator
             ));
         }
 
-        // === Bloquear salida (anillo robado, nadie bloqueando aún) ===
-        // Prioridad más alta si alguien está persiguiendo — conviene cortar la huida
-        if (creencias.AnilloRobado && !creencias.AlguienBloqueandoSalida())
+        // === Asegurar pedestal si vimos al ladrón sin anillo ===
+        if (!creencias.AnilloRobado &&
+            creencias.TienePosicionPedestal &&
+            creencias.TieneInfoReciente(12f) &&
+            !creencias.AlguienGuardandoPedestal() &&
+            creencias.SoyElMasCercanoA(creencias.PosicionPedestal))
         {
-            // Si alguien ya persigue, bloquear la salida es más urgente que unirse a la persecución
-            float prioridadBloqueo = creencias.AlguienPersiguiendo() ? 85f : 60f;
+            deseos.Add(new Desire(
+                BehaviorType.CheckPedestal,
+                82f,
+                creencias.PosicionPedestal
+            ));
+        }
+
+        // === Bloquear salida (anillo robado, hasta 2 bloqueadores) ===
+        // Cuando el anillo está robado, la salida es el punto crítico: el ladrón
+        // tiene que pasar obligatoriamente por ahí. Permitimos hasta 2 bloqueadores
+        // para garantizar cobertura aunque uno se vea desplazado por la persecución.
+        const int MAX_BLOQUEADORES = 2;
+        if (creencias.AnilloRobado && creencias.GuardiasBloqueando() < MAX_BLOQUEADORES)
+        {
+            float prioridadBloqueo = creencias.LadronVisible ? 90f : 95f;
             deseos.Add(new Desire(BehaviorType.BlockExit, prioridadBloqueo));
         }
 
-        // === Investigar posición reportada (info menos reciente) ===
+        // === Búsqueda con info menos reciente ===
         if (!creencias.LadronVisible && creencias.TieneInfoReciente(30f)
             && !creencias.TieneInfoReciente(15f))
         {
             deseos.Add(new Desire(
-                BehaviorType.Investigate,
+                BehaviorType.Search,
                 50f,
                 creencias.UltimaPosicionLadron
             ));

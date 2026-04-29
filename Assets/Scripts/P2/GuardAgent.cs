@@ -21,10 +21,15 @@ public class GuardAgent : MonoBehaviour
 
     [Header("Pedestal del Anillo")]
     public Transform pedestalAnillo;
+    public Transform[] puntosBusquedaMapa;
 
     [Header("Temporizadores")]
     public float tiempoEntreComprobaciones = 30f;
     public float cooldownContractNet = 10f;
+
+    [Header("Comunicación")]
+    public float intervaloHeartbeatEstado = 2.5f;
+    public float intervaloActualizacionAvistamiento = 0.6f;
 
     
 
@@ -59,6 +64,10 @@ public class GuardAgent : MonoBehaviour
     // ESTADO INTERNO
 
     private float temporizadorComprobacion;
+    private float temporizadorHeartbeat;
+    private float ultimoInformeAvistamiento = -100f;
+    private int ultimaVentanaChequeoPedestal = -1;
+    private float ultimaLimpiezaStale = 0f;
 
     // INICIALIZACIÓN
 
@@ -86,10 +95,23 @@ public class GuardAgent : MonoBehaviour
         behaviors[BehaviorType.Search]         = new SearchBehavior(12f, 4, 10f);
         behaviors[BehaviorType.SearchAssigned] = new SearchAssignedBehavior();
         behaviors[BehaviorType.BlockExit]      = new BlockExitBehavior(puntoSalida, puntosBloqueoSalida);
-        behaviors[BehaviorType.Investigate]    = new InvestigateBehavior(3f);
         behaviors[BehaviorType.CheckPedestal]  = new CheckPedestalBehavior(pedestalAnillo);
 
-        temporizadorComprobacion = Random.Range(15f, tiempoEntreComprobaciones);
+        temporizadorHeartbeat = Random.Range(0f, intervaloHeartbeatEstado);
+
+        if (pedestalAnillo != null)
+        {
+            creencias.PosicionPedestal = pedestalAnillo.position;
+            creencias.TienePosicionPedestal = true;
+        }
+
+        if (puntoSalida != null)
+        {
+            creencias.PosicionSalida = puntoSalida.position;
+            creencias.TienePosicionSalida = true;
+        }
+
+        RegistrarZonasBusqueda();
 
         // Sensores
         if (sensorVision != null)
@@ -163,9 +185,13 @@ public class GuardAgent : MonoBehaviour
 
         comunicacion.ProcesarMensajes();
         ActualizarTemporizadorComprobacion();
-        
-        // Limpiar guardias stale cada cierto tiempo
-        creencias.LimpiarGuardiasStale();
+        ActualizarHeartbeatEstado();
+
+        if (Time.time - ultimaLimpiezaStale > 10f)
+        {
+            creencias.LimpiarGuardiasStale();
+            ultimaLimpiezaStale = Time.time;
+        }
 
         List<Desire> deseos = generadorDeseos.GenerarDeseos();
         selectorIntenciones.Seleccionar(deseos, creencias);
@@ -198,19 +224,22 @@ public class GuardAgent : MonoBehaviour
 
     private void OnLadronVisto(Vector3 posicion)
     {
-        creencias.ActualizarPosicionLadron(posicion, Time.time, true, agentId);
-        protocolHandler.InformarAvistamiento(new ThiefSighting
-        {
-            Location     = new Position(posicion),
-            Timestamp    = Time.time,
-            ReportedBy   = agentId,
-            DirectVision = true
-        });
+        Vector3 direccion = CalcularDireccionObservada(posicion);
+        bool tieneDireccion = direccion.sqrMagnitude > 0.01f;
+
+        creencias.ActualizarPosicionLadron(posicion, Time.time, true, agentId, direccion, tieneDireccion);
+        ComprobarSiLlevaAnillo();
+        InformarAvistamiento(posicion, direccion, tieneDireccion, true);
     }
 
     private void OnLadronSigueVisible(Vector3 posicion)
     {
-        creencias.ActualizarPosicionLadron(posicion, Time.time, true, agentId);
+        Vector3 direccion = CalcularDireccionObservada(posicion);
+        bool tieneDireccion = direccion.sqrMagnitude > 0.01f;
+
+        creencias.ActualizarPosicionLadron(posicion, Time.time, true, agentId, direccion, tieneDireccion);
+        ComprobarSiLlevaAnillo();
+        InformarAvistamiento(posicion, direccion, tieneDireccion, false);
     }
 
     private void OnLadronPerdido()
@@ -223,6 +252,8 @@ public class GuardAgent : MonoBehaviour
     private void OnAnilloDesaparecido()
     {
         creencias.MarcarAnilloRobado();
+        creencias.DebeBuscarAlrededorPedestal = false;
+        creencias.DebeComprobarPedestal = false;
         protocolHandler.InformarPredicado(PredicateType.RING_STOLEN);
         Debug.Log($"[{agentId}] Anillo robado detectado");
     }
@@ -230,6 +261,49 @@ public class GuardAgent : MonoBehaviour
     private void OnSonidoDetectado(Vector3 posicion)
     {
         creencias.ActualizarPosicionLadron(posicion, Time.time, false, agentId);
+    }
+
+    private void ComprobarSiLlevaAnillo()
+    {
+        if (sensorVision == null ||
+            !sensorVision.ObjetivoVisibleConAnillo ||
+            creencias.LadronVistoConAnillo)
+        {
+            return;
+        }
+
+        creencias.MarcarLadronConAnillo();
+        protocolHandler.InformarPredicado(PredicateType.RING_STOLEN, "seen-carrying-ring");
+        Debug.Log($"[{agentId}] Ladrón visto llevando el anillo");
+    }
+
+    private Vector3 CalcularDireccionObservada(Vector3 nuevaPosicion)
+    {
+        if (!creencias.TieneInfoReciente(2f))
+            return Vector3.zero;
+
+        Vector3 delta = nuevaPosicion - creencias.UltimaPosicionLadron;
+        if (delta.sqrMagnitude < 0.04f)
+            return Vector3.zero;
+
+        delta.y = 0f;
+        return delta.normalized;
+    }
+
+    private void InformarAvistamiento(Vector3 posicion, Vector3 direccion, bool tieneDireccion, bool forzar)
+    {
+        if (!forzar && Time.time - ultimoInformeAvistamiento < intervaloActualizacionAvistamiento)
+            return;
+
+        ultimoInformeAvistamiento = Time.time;
+        protocolHandler.InformarAvistamiento(new ThiefSighting
+        {
+            Location     = new Position(posicion),
+            Direction    = tieneDireccion ? new Position(direccion) : null,
+            Timestamp    = Time.time,
+            ReportedBy   = agentId,
+            DirectVision = true
+        });
     }
 
     // GESTIÓN DE BEHAVIORS
@@ -264,7 +338,8 @@ public class GuardAgent : MonoBehaviour
             GuardId         = agentId,
             CurrentPosition = new Position(transform.position),
             CurrentState    = behaviorActivo_tipo.ToString(),
-            IsAvailable     = selectorIntenciones.EstaDisponible()
+            IsAvailable     = selectorIntenciones.EstaDisponible(),
+            CurrentZone     = creencias.TareaAsignada?.ZoneId ?? ""
         };
         ACLMessage statusMsg = new ACLMessage(ACLPerformative.INFORM, agentId, "");
         statusMsg.Content  = ContentLanguage.Encode(miEstado);
@@ -284,7 +359,13 @@ public class GuardAgent : MonoBehaviour
 
             if (behaviorActivo_tipo == BehaviorType.SearchAssigned && creencias.TieneTareaAsignada)
             {
-                protocolHandler.NotificarDone(creencias.ConversacionTareaAsignada, creencias.AsignadorTarea);
+                creencias.RegistrarBusquedaCompletada(creencias.TareaAsignada.ZoneId);
+
+                // Si la tarea vino de un Contract-Net, notificar al iniciador.
+                // Las tareas auto-asignadas no tienen asignador y no requieren INFORM_DONE.
+                if (!string.IsNullOrEmpty(creencias.AsignadorTarea))
+                    protocolHandler.NotificarDone(creencias.ConversacionTareaAsignada, creencias.AsignadorTarea);
+
                 protocolHandler.InformarPredicado(PredicateType.ZONE_CLEAR);
                 creencias.LimpiarTarea();
             }
@@ -296,7 +377,16 @@ public class GuardAgent : MonoBehaviour
             }
 
             if (behaviorActivo_tipo == BehaviorType.CheckPedestal)
-                creencias.DebeComprobarPedestal = false;
+            {
+                creencias.RegistrarChequeoPedestal();
+                if (!creencias.AnilloRobado && creencias.TieneInfoReciente(12f))
+                    creencias.DebeBuscarAlrededorPedestal = true;
+            }
+
+            // Tras una búsqueda libre (Search), si quedan zonas sin cubrir por el resto
+            // del equipo, auto-asignarse la mejor candidata para mantenerse útil.
+            if (behaviorActivo_tipo == BehaviorType.Search)
+                IntentarAutoAsignacionDeZona();
 
             behaviorActivo.Detener(actuador);
             behaviorActivo = null;
@@ -305,18 +395,70 @@ public class GuardAgent : MonoBehaviour
         }
     }
 
+    // AUTO-ASIGNACIÓN DE ZONA
+
+    // Tras una búsqueda libre (Search alrededor de la última posición), el guardia
+    // mira qué zonas no están cubiertas por el resto del equipo (vía CurrentZone
+    // difundido en el heartbeat) y se auto-asigna una. Es self-assignment local
+    // basado en información compartida, no Contract-Net — no hay iniciador ni
+    // INFORM_DONE asociado al terminar.
+    private void IntentarAutoAsignacionDeZona()
+    {
+        string zonaLibre = creencias.ObtenerZonaSinCubrir(soloExit: creencias.AnilloRobado);
+        if (string.IsNullOrEmpty(zonaLibre)) return;
+
+        Vector3 centro = creencias.ObtenerCentroZona(zonaLibre);
+        SearchTask tarea = new SearchTask
+        {
+            TaskId     = $"self-{agentId}-{zonaLibre}-{Time.time:F0}",
+            ZoneId     = zonaLibre,
+            TargetArea = new Position(centro),
+            Radius     = 15f,
+            Urgency    = 0.6f
+        };
+
+        // Asignador vacío indica auto-asignación: al completarse no se notificará a nadie.
+        creencias.AsignarTarea(tarea, "", "");
+        Debug.Log($"[{agentId}] Auto-asignación a zona libre: {zonaLibre}");
+    }
+
     // TEMPORIZADOR PEDESTAL
 
     private void ActualizarTemporizadorComprobacion()
     {
         if (creencias.AnilloRobado) return;
-        if (behaviorActivo_tipo != BehaviorType.Patrol) return;
+        if (tiempoEntreComprobaciones <= 0f) return;
 
-        temporizadorComprobacion -= Time.deltaTime;
-        if (temporizadorComprobacion <= 0)
+        int ventanaActual = Mathf.FloorToInt(Time.time / tiempoEntreComprobaciones);
+        if (ventanaActual == ultimaVentanaChequeoPedestal) return;
+
+        ultimaVentanaChequeoPedestal = ventanaActual;
+        creencias.DebeComprobarPedestal = true;
+    }
+
+    private void ActualizarHeartbeatEstado()
+    {
+        temporizadorHeartbeat -= Time.deltaTime;
+        if (temporizadorHeartbeat > 0f) return;
+
+        temporizadorHeartbeat = intervaloHeartbeatEstado;
+        BroadcastEstado();
+    }
+
+    private void RegistrarZonasBusqueda()
+    {
+        if (puntosBusquedaMapa == null) return;
+
+        foreach (Transform zona in puntosBusquedaMapa)
         {
-            temporizadorComprobacion = tiempoEntreComprobaciones;
-            creencias.DebeComprobarPedestal = true;
+            if (zona == null || string.IsNullOrEmpty(zona.name) || zona.childCount == 0)
+                continue;
+
+            Vector3[] puntos = new Vector3[zona.childCount];
+            for (int i = 0; i < zona.childCount; i++)
+                puntos[i] = zona.GetChild(i).position;
+
+            creencias.RegistrarZonaBusqueda(zona.name, puntos);
         }
     }
 

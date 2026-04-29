@@ -106,7 +106,8 @@ public static class ContentLanguage
 
     public static bool IsGuardStatus(string json)
     {
-        return !string.IsNullOrEmpty(json) && json.Contains("\"GuardId\"");
+        // "CurrentState" es exclusivo de GuardStatus; ProposalData también tiene "GuardId"
+        return !string.IsNullOrEmpty(json) && json.Contains("\"CurrentState\"");
     }
 
 }

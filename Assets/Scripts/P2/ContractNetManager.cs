@@ -5,6 +5,13 @@ using UnityEngine;
 // Gestiona el protocolo FIPA-Contract-Net desde el lado del manager (iniciador).
 // Cuando el ladrón se pierde de vista, distribuye zonas de búsqueda entre los guardias
 // disponibles eligiendo al candidato con menor coste (distancia).
+//
+// Distribución multi-zona: en una misma ronda se abren tantos contratos como zonas
+// candidatas haya (limitado por el número de guardias disponibles). Cuando todos
+// los contratos están listos para evaluar, se hace un matching greedy global:
+// la zona más prioritaria recibe al guardia más barato, la siguiente al siguiente
+// más barato no asignado, y así sucesivamente. Cada guardia recibe como máximo
+// una zona por ronda.
 public class ContractNetManager
 {
     private BeliefBase creencias;
@@ -13,7 +20,8 @@ public class ContractNetManager
     private float cooldown;
     private float ultimoContractNet = -100f;
 
-    private ContractNetEstado contratoActivo = null;
+    // Contratos abiertos en la ronda actual (uno por zona).
+    private List<ContractNetEstado> contratosActivos = new List<ContractNetEstado>();
 
     public ContractNetManager(BeliefBase creencias, ComunicacionAgente comunicacion,
                                string id, float cooldown)
@@ -23,89 +31,134 @@ public class ContractNetManager
         this.agentId      = id;
         this.cooldown     = cooldown;
 
-        // Suscribirse a propuestas y rechazos para alimentar el contrato activo
         comunicacion.OnPropuestaRecibida += AlimentarContrato;
-        comunicacion.OnRefuseRecibido    += AlimentarContratoRefuse;
+        comunicacion.OnRefuseRecibido    += AlimentarContrato;
     }
 
-    // Desuscribirse al destruir el agente
     public void Limpiar()
     {
         comunicacion.OnPropuestaRecibida -= AlimentarContrato;
-        comunicacion.OnRefuseRecibido    -= AlimentarContratoRefuse;
+        comunicacion.OnRefuseRecibido    -= AlimentarContrato;
     }
 
-    // Inicia un Contract Net para distribuir la búsqueda entre los guardias disponibles.
-    // Solo lo inicia el guardia más cercano a la última posición del ladrón, evitando
-    // que varios guardias lancen Contract-Nets simultáneos sin coordinación centralizada.
+    // Inicia una ronda de Contract Net distribuyendo todas las zonas candidatas
+    // entre los guardias disponibles. Solo lo lanza el guardia más cercano al
+    // ladrón (con tiebreaker lexicográfico por ID), evitando rondas simultáneas
+    // sin coordinador central.
     public void IniciarDistribucionBusqueda()
     {
-        if (Time.time - ultimoContractNet < cooldown) return;
-        if (contratoActivo != null) return;
+        float cooldownEfectivo = creencias.AnilloRobado ? 3f : cooldown;
+        if (Time.time - ultimoContractNet < cooldownEfectivo) return;
+        if (contratosActivos.Count > 0) return;
 
-        // Cada guardia decide por sí mismo si es el más cercano — emergencia sin coordinador
-        // Añadido tiebreaker: si hay empate en distancia, usa el ID del agente como desempate
-        if (!creencias.SoyElMasCercanoA(creencias.UltimaPosicionLadron))
+        if (!SoyElIniciadorMasApropiado()) return;
+
+        List<string> otrosGuardias = AgentRegistry.Instance
+            .ObtenerOtrosIdsPorTipo("guard", agentId);
+        if (otrosGuardias.Count == 0) return;
+
+        List<string> zonas = SeleccionarZonasParaContratar(otrosGuardias.Count);
+        if (zonas.Count == 0)
         {
-            // Tiebreaker: si no soy el más cercano por posición, verifico si mi ID es menor
-            // Esto evita que múltiples guardias inicien Contract-Nets simultáneos
-            float miDistancia = Vector3.Distance(creencias.MiPosicion, creencias.UltimaPosicionLadron);
-            bool hayEmpate = true;
-            
-            foreach (var par in creencias.EstadosOtrosGuardias)
-            {
-                if (par.Value.CurrentPosition != null)
-                {
-                    float suDistancia = Vector3.Distance(par.Value.CurrentPosition.ToVector3(), creencias.UltimaPosicionLadron);
-                    if (suDistancia < miDistancia - 0.5f) // Margen de 0.5 para evitar ruido
-                    {
-                        hayEmpate = false;
-                        break;
-                    }
-                }
-            }
-            
-            // Si hay empate real (distancias similares), usar ID como tiebreaker
-            if (hayEmpate)
-            {
-                List<string> otrosGuardias = AgentRegistry.Instance
-                    .ObtenerOtrosIdsPorTipo("guard", agentId);
-                
-                foreach (string otroId in otrosGuardias)
-                {
-                    // Comparación lexicográfica de IDs como tiebreaker determinista
-                    if (string.Compare(agentId, otroId) > 0)
-                    {
-                        return; // Otro guardia tiene prioridad por ID
-                    }
-                }
-            }
-            else
-            {
-                return; // Hay un guardia claramente más cercano
-            }
+            Debug.LogWarning($"[{agentId}] Contract Net sin zonas registradas");
+            return;
         }
 
         ultimoContractNet = Time.time;
 
-        List<string> otrosGuardias = AgentRegistry.Instance
-            .ObtenerOtrosIdsPorTipo("guard", agentId);
+        foreach (string zoneId in zonas)
+        {
+            AbrirContratoParaZona(zoneId, otrosGuardias);
+        }
 
-        if (otrosGuardias.Count == 0) return;
+        Debug.Log($"[{agentId}] Contract Net iniciado: {zonas.Count} zonas, {otrosGuardias.Count} guardias");
+    }
+
+    // Evalúa los contratos abiertos cuando todos están listos y hace el matching
+    // global. Llamar desde Update().
+    public void Gestionar()
+    {
+        if (contratosActivos.Count == 0) return;
+        if (contratosActivos.Any(c => !c.ListoParaEvaluar())) return;
+
+        // Matching greedy: cada guardia recibe como máximo una zona.
+        // Las zonas se procesan en el orden en que se seleccionaron (más
+        // prioritarias primero), así la zona crítica obtiene su mejor postor.
+        HashSet<string> guardiasYaAsignados = new HashSet<string>();
+
+        foreach (ContractNetEstado contrato in contratosActivos)
+        {
+            ACLMessage ganador = ElegirMejorPropuesta(contrato.Propuestas, guardiasYaAsignados);
+
+            if (ganador != null)
+            {
+                AdjudicarZona(ganador, contrato.ContenidoTarea);
+                guardiasYaAsignados.Add(ganador.Sender);
+            }
+
+            RechazarPerdedores(contrato.Propuestas, ganador);
+        }
+
+        contratosActivos.Clear();
+    }
+
+    // SELECCIÓN DE ZONAS
+
+    // Devuelve hasta maxZonas zonas a contratar, filtradas y ordenadas según
+    // el estado del mundo:
+    //   - Anillo robado: prioriza zonas "Exit_*" cercanas a la salida.
+    //   - Anillo en pedestal: cualquier zona, ordenada por cercanía al ladrón.
+    // Si el filtrado por prefijo deja la lista vacía, recurre a todas las zonas
+    // para no bloquearse por convención de nombres.
+    private List<string> SeleccionarZonasParaContratar(int maxZonas)
+    {
+        List<string> zonasDisponibles = creencias.ObtenerIdsZonasBusqueda();
+        if (zonasDisponibles.Count == 0) return new List<string>();
+
+        IEnumerable<string> candidatas = zonasDisponibles;
+        Vector3 referencia = creencias.UltimaPosicionLadron;
+
+        if (creencias.AnilloRobado)
+        {
+            var exitZones = zonasDisponibles
+                .Where(z => z.StartsWith("Exit_", System.StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (exitZones.Count > 0) candidatas = exitZones;
+
+            if (creencias.TienePosicionSalida)
+                referencia = creencias.PosicionSalida;
+        }
+
+        // Orden primario: zona más antigua sin barrer (rotación natural).
+        // Orden secundario: cercanía al punto de referencia (ladrón o salida).
+        return candidatas
+            .OrderBy(z => creencias.ObtenerTiempoUltimaBusqueda(z))
+            .ThenBy(z => Vector3.Distance(creencias.ObtenerCentroZona(z), referencia))
+            .Take(maxZonas)
+            .ToList();
+    }
+
+    // APERTURA DE CONTRATO Y ENVÍO DE CFP
+
+    private void AbrirContratoParaZona(string zoneId, List<string> participantes)
+    {
+        Vector3 centroZona = creencias.ObtenerCentroZona(zoneId);
 
         SearchTask tarea = new SearchTask
         {
-            TaskId     = $"search-{agentId}-{Time.time:F0}",
-            TargetArea = new Position(creencias.UltimaPosicionLadron),
+            TaskId     = $"search-{agentId}-{zoneId}-{Time.time:F0}",
+            ZoneId     = zoneId,
+            TargetArea = new Position(centroZona),
             Radius     = 15f,
             Urgency    = 0.8f
         };
 
         string convId = comunicacion.NuevaConversacion();
-        contratoActivo = new ContractNetEstado(convId, otrosGuardias, timeout: 2f);
-        contratoActivo.SetContenidoTarea(ContentLanguage.Encode(tarea));
+        ContractNetEstado estado = new ContractNetEstado(convId, participantes, timeout: 2f);
+        estado.SetContenidoTarea(ContentLanguage.Encode(tarea));
+        contratosActivos.Add(estado);
 
-        foreach (string receptor in otrosGuardias)
+        foreach (string receptor in participantes)
         {
             ACLMessage cfp = new ACLMessage(ACLPerformative.CFP, agentId, receptor);
             cfp.Content        = ContentLanguage.Encode(tarea);
@@ -113,57 +166,94 @@ public class ContractNetManager
             cfp.ConversationId = convId;
             comunicacion.Enviar(cfp);
         }
-
-        Debug.Log($"[{agentId}] Contract Net iniciado ({convId})");
     }
 
-    // Evalúa y adjudica si el contrato activo está listo (llamar desde Update)
-    public void Gestionar()
+    // MATCHING
+
+    private ACLMessage ElegirMejorPropuesta(List<ACLMessage> propuestas, HashSet<string> excluir)
     {
-        if (contratoActivo == null || !contratoActivo.ListoParaEvaluar()) return;
-
-        List<ACLMessage> propuestas = contratoActivo.Propuestas;
-
-        if (propuestas.Count == 0)
-        {
-            Debug.Log($"[{agentId}] Contract Net: sin propuestas recibidas");
-            contratoActivo = null;
-            return;
-        }
-
-        // Adjudicar al guardia con menor coste estimado
-        ACLMessage mejor = propuestas
+        return propuestas
+            .Where(p => !excluir.Contains(p.Sender))
             .OrderBy(p => ContentLanguage.DecodeProposal(p.Content)?.Cost ?? float.MaxValue)
-            .First();
+            .FirstOrDefault();
+    }
 
-        ACLMessage accept = mejor.CreateReply(ACLPerformative.ACCEPT_PROPOSAL);
-        accept.Content = contratoActivo.ContenidoTarea;
+    private void AdjudicarZona(ACLMessage ganador, string contenidoTarea)
+    {
+        ACLMessage accept = ganador.CreateReply(ACLPerformative.ACCEPT_PROPOSAL);
+        accept.Content = contenidoTarea;
         comunicacion.Enviar(accept);
+        Debug.Log($"[{agentId}] Zona adjudicada a {ganador.Sender}");
+    }
 
+    private void RechazarPerdedores(List<ACLMessage> propuestas, ACLMessage ganador)
+    {
         foreach (ACLMessage propuesta in propuestas)
         {
-            if (propuesta.Sender != mejor.Sender)
+            if (ganador == null || propuesta.Sender != ganador.Sender)
                 comunicacion.Enviar(propuesta.CreateReply(ACLPerformative.REJECT_PROPOSAL));
         }
-
-        Debug.Log($"[{agentId}] Contract Net resuelto: {mejor.Sender} buscará la zona");
-        contratoActivo = null;
     }
 
+    // ENRUTADO DE RESPUESTAS
+
+    // Las propuestas y rechazos llegan como eventos del buzón. Se enrutan al
+    // contrato correspondiente por ConversationId — un mismo guardia puede haber
+    // recibido CFPs de varias zonas en la misma ronda y responder a cada una.
     private void AlimentarContrato(ACLMessage msg)
     {
-        if (contratoActivo != null && msg.ConversationId == contratoActivo.ConversationId)
-            contratoActivo.RecibirRespuesta(msg);
+        foreach (ContractNetEstado contrato in contratosActivos)
+        {
+            if (msg.ConversationId == contrato.ConversationId)
+            {
+                contrato.RecibirRespuesta(msg);
+                return;
+            }
+        }
     }
 
-    private void AlimentarContratoRefuse(ACLMessage msg)
+    // INICIADOR
+
+    // Decide si este guardia debe lanzar la ronda de Contract Net. La regla
+    // es "el más cercano al ladrón inicia"; si hay empate aproximado en
+    // distancia, se desempata por orden lexicográfico del ID. Esto evita
+    // rondas simultáneas sin necesidad de coordinador central.
+    private bool SoyElIniciadorMasApropiado()
     {
-        if (contratoActivo != null && msg.ConversationId == contratoActivo.ConversationId)
-            contratoActivo.RecibirRespuesta(msg);
+        if (creencias.SoyElMasCercanoA(creencias.UltimaPosicionLadron))
+            return true;
+
+        float miDistancia = Vector3.Distance(creencias.MiPosicion, creencias.UltimaPosicionLadron);
+        bool hayEmpate = true;
+
+        foreach (var par in creencias.EstadosOtrosGuardias)
+        {
+            if (par.Value.CurrentPosition == null) continue;
+            float suDistancia = Vector3.Distance(par.Value.CurrentPosition.ToVector3(), creencias.UltimaPosicionLadron);
+            if (suDistancia < miDistancia - 0.5f) // Margen para evitar ruido
+            {
+                hayEmpate = false;
+                break;
+            }
+        }
+
+        if (!hayEmpate) return false;
+
+        List<string> otrosGuardias = AgentRegistry.Instance
+            .ObtenerOtrosIdsPorTipo("guard", agentId);
+
+        foreach (string otroId in otrosGuardias)
+        {
+            if (string.Compare(agentId, otroId) > 0)
+                return false; // Otro guardia tiene prioridad por ID
+        }
+
+        return true;
     }
 }
 
-// Seguimiento del estado de una negociación Contract Net activa
+// Seguimiento del estado de una negociación Contract Net activa para una zona.
+// Una ronda multi-zona contiene varios estados, uno por zona contratada.
 public class ContractNetEstado
 {
     public string ConversationId  { get; private set; }
