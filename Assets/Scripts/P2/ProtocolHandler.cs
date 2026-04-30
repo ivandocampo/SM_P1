@@ -4,6 +4,8 @@ using UnityEngine;
 // Actua como intermediario entre el cerebro del agente (GuardAgent) y el buzon (ComunicacionAgente).
 public class ProtocolHandler
 {
+    public static bool LogsDetallados = false;
+
     private BeliefBase creencias;
     private ComunicacionAgente comunicacion;
     private IntentionSelector selectorIntenciones;
@@ -92,7 +94,8 @@ public class ProtocolHandler
                     avistamiento.Direction != null ? avistamiento.Direction.ToVector3() : Vector3.zero,
                     avistamiento.Direction != null
                 );
-                Debug.Log($"[{agentId}] Avistamiento recibido de {msg.Sender} en {avistamiento.Location}");
+                if (LogsDetallados)
+                    Debug.Log($"[{agentId}] Avistamiento recibido de {msg.Sender} en {avistamiento.Location}");
             }
             return;
         }
@@ -119,7 +122,8 @@ public class ProtocolHandler
                 // Actualizar su estado para que otros guardias no crean que alguien sigue en persecución
                 // (evita falsos positivos en AlguienPersiguiendo() mientras llega el próximo heartbeat).
                 creencias.ActualizarDisponibilidadGuardia(msg.Sender, true, BehaviorType.Search.ToString());
-                Debug.Log($"[{agentId}] {msg.Sender} perdió al ladrón");
+                if (LogsDetallados)
+                    Debug.Log($"[{agentId}] {msg.Sender} perdió al ladrón");
             }
         }
     }
@@ -188,7 +192,8 @@ public class ProtocolHandler
             EstimatedTime = distancia / actuador.velocidadAlerta
         };
         ResponderCFPConPropuesta(msg, propuesta);
-        Debug.Log($"[{agentId}] Propuesta enviada: coste={distancia:F1}");
+        if (LogsDetallados)
+            Debug.Log($"[{agentId}] Propuesta enviada: coste={distancia:F1}");
     }
 
     public void ManejarPropuestaAceptada(ACLMessage msg)
@@ -204,7 +209,8 @@ public class ProtocolHandler
     public void ManejarPropuestaRechazada(ACLMessage msg)
     {
         creencias.ActualizarDisponibilidadGuardia(msg.Sender, true);
-        Debug.Log($"[{agentId}] Propuesta rechazada por {msg.Sender}");
+        if (LogsDetallados)
+            Debug.Log($"[{agentId}] Propuesta rechazada por {msg.Sender}");
     }
 
     public void ManejarDone(ACLMessage msg)

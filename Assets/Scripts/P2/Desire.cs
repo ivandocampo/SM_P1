@@ -1,16 +1,15 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-
 [System.Serializable]
 public class Desire
 {
     public BehaviorType Nombre;
 
-    /// <summary>Prioridad del deseo. Mayor = más urgente. Rango típico: 0-100.</summary>
+    /// <summary>Prioridad del deseo. Mayor = mas urgente. Rango tipico: 0-100.</summary>
     public float Prioridad;
 
-    /// <summary>Posición objetivo asociada al deseo (si aplica).</summary>
+    /// <summary>Posicion objetivo asociada al deseo (si aplica).</summary>
     public Vector3 PosicionObjetivo;
 
     /// <summary>Datos adicionales del contexto (tarea asignada, request, etc.).</summary>
@@ -30,7 +29,6 @@ public class Desire
     }
 }
 
-
 public class DesireGenerator
 {
     private BeliefBase creencias;
@@ -40,115 +38,193 @@ public class DesireGenerator
         this.creencias = creencias;
     }
 
-
     public List<Desire> GenerarDeseos()
     {
         List<Desire> deseos = new List<Desire>();
+        TacticalPhase fase = creencias.FaseActual();
 
-        // === PRIORIDAD MÁXIMA: Persecución directa ===
-        // Equipo de persecución emergente con tamaño máximo 2: si soy el más cercano
-        // o aún hay hueco entre los que ya persiguen, me uno; si no, dejo que otros
-        // mantengan la cobertura del mapa (búsqueda, bloqueo de salida, etc.).
-        if (creencias.LadronVisible)
-        {
-            const int MAX_PERSEGUIDORES = 2;
-            bool soyMejorPerseguidor = !creencias.AlguienPersiguiendo()
-                || creencias.SoyElMasCercanoA(creencias.UltimaPosicionLadron);
+        AgregarPersecucionSiProcede(deseos, fase);
+        AgregarTareaAsignada(deseos);
+        AgregarRequestAceptado(deseos);
+        AgregarIntercepcionSiProcede(deseos, fase);
+        AgregarDefensaPedestalSiProcede(deseos, fase);
+        AgregarBusquedaSiProcede(deseos, fase);
+        AgregarBloqueoSalidaSiProcede(deseos, fase);
 
-            if (soyMejorPerseguidor || creencias.GuardiasPersiguiendo() < MAX_PERSEGUIDORES)
-            {
-                deseos.Add(new Desire(
-                    BehaviorType.Pursuit,
-                    100f,
-                    creencias.UltimaPosicionLadron
-                ));
-            }
-        }
-
-        // === Tarea asignada vía Contract Net ===
-        // Prioridad 85 para superar a CheckPedestal(82) — un guardia que acepta una zona
-        // debe ejecutarla, no quedarse en CheckPedestal por ser el más cercano al pedestal.
-        if (creencias.TieneTareaAsignada)
-        {
-            deseos.Add(new Desire(
-                BehaviorType.SearchAssigned,
-                85f,
-                creencias.TareaAsignada.TargetArea.ToVector3(),
-                creencias.ConversacionTareaAsignada
-            ));
-        }
-
-        // === REQUEST aceptado pendiente ===
-        if (creencias.TieneRequestPendiente)
-        {
-            string accion = creencias.RequestAceptado.Action;
-            Vector3 pos = creencias.RequestAceptado.TargetPosition != null
-                ? creencias.RequestAceptado.TargetPosition.ToVector3()
-                : Vector3.zero;
-
-            BehaviorType nombreDeseo = accion == ActionType.BLOCK_EXIT.ToString() ? BehaviorType.BlockExit :
-                                 accion == ActionType.SEARCH_AREA.ToString() ? BehaviorType.SearchAssigned :
-                                 BehaviorType.Search;
-
-            deseos.Add(new Desire(nombreDeseo, 75f, pos, creencias.ConversacionRequest));
-        }
-
-        // === Búsqueda activa (info reciente pero no vemos al ladrón) ===
-        // Limitada: si ya hay 2+ guardias buscando, no añadir más buscadores
-        int maxGuardiasBuscando = creencias.AnilloRobado ? 3 : 2;
-        if (!creencias.LadronVisible && creencias.TieneInfoReciente(15f)
-            && creencias.GuardiasBuscando() < maxGuardiasBuscando)
-        {
-            deseos.Add(new Desire(
-                BehaviorType.Search,
-                70f,
-                creencias.UltimaPosicionLadron
-            ));
-        }
-
-        // === Asegurar pedestal si vimos al ladrón sin anillo ===
-        if (!creencias.AnilloRobado &&
+        if (creencias.DebeComprobarPedestal &&
+            !creencias.AnilloRobado &&
             creencias.TienePosicionPedestal &&
-            creencias.TieneInfoReciente(12f) &&
             !creencias.AlguienGuardandoPedestal() &&
             creencias.SoyElMasCercanoA(creencias.PosicionPedestal))
         {
-            deseos.Add(new Desire(
-                BehaviorType.CheckPedestal,
-                82f,
-                creencias.PosicionPedestal
-            ));
+            deseos.Add(new Desire(BehaviorType.CheckPedestal, 35f));
         }
 
-        // === Bloquear salida (anillo robado, hasta 2 bloqueadores) ===
-        // Cuando el anillo está robado, la salida es el punto crítico: el ladrón
-        // tiene que pasar obligatoriamente por ahí. Permitimos hasta 2 bloqueadores
-        // para garantizar cobertura aunque uno se vea desplazado por la persecución.
-        const int MAX_BLOQUEADORES = 2;
-        if (creencias.AnilloRobado && creencias.GuardiasBloqueando() < MAX_BLOQUEADORES)
-        {
-            float prioridadBloqueo = creencias.LadronVisible ? 90f : 95f;
-            deseos.Add(new Desire(BehaviorType.BlockExit, prioridadBloqueo));
-        }
-
-        // === Búsqueda con info menos reciente ===
-        if (!creencias.LadronVisible && creencias.TieneInfoReciente(30f)
-            && !creencias.TieneInfoReciente(15f))
-        {
-            deseos.Add(new Desire(
-                BehaviorType.Search,
-                50f,
-                creencias.UltimaPosicionLadron
-            ));
-        }
-
-        // === Comprobar pedestal (rutina periódica) ===
-        if (creencias.DebeComprobarPedestal)
-            deseos.Add(new Desire(BehaviorType.CheckPedestal, 20f));
-
-        // === Patrullar (siempre disponible como fallback) ===
         deseos.Add(new Desire(BehaviorType.Patrol, 10f));
-
         return deseos;
+    }
+
+    private void AgregarPersecucionSiProcede(List<Desire> deseos, TacticalPhase fase)
+    {
+        if (fase != TacticalPhase.RingSafeThiefKnown &&
+            fase != TacticalPhase.RingStolenThiefKnown)
+            return;
+
+        const int MAX_PERSEGUIDORES = 1;
+        bool soyPerseguidorActual = creencias.EstadoActual == BehaviorType.Pursuit;
+        bool hayHueco = creencias.GuardiasEnEstado(BehaviorType.Pursuit) < MAX_PERSEGUIDORES;
+        bool soyMejorPerseguidor = creencias.SoyElMasCercanoA(creencias.UltimaPosicionLadron);
+
+        if (!soyPerseguidorActual && !hayHueco && !soyMejorPerseguidor)
+            return;
+
+        deseos.Add(new Desire(
+            BehaviorType.Pursuit,
+            PrioridadPorCercania(100f, creencias.UltimaPosicionLadron, 0.12f),
+            creencias.UltimaPosicionLadron
+        ));
+    }
+
+    private void AgregarTareaAsignada(List<Desire> deseos)
+    {
+        if (!creencias.TieneTareaAsignada) return;
+
+        deseos.Add(new Desire(
+            BehaviorType.SearchAssigned,
+            85f,
+            creencias.TareaAsignada.TargetArea.ToVector3(),
+            creencias.ConversacionTareaAsignada
+        ));
+    }
+
+    private void AgregarRequestAceptado(List<Desire> deseos)
+    {
+        if (!creencias.TieneRequestPendiente) return;
+
+        string accion = creencias.RequestAceptado.Action;
+        Vector3 pos = creencias.RequestAceptado.TargetPosition != null
+            ? creencias.RequestAceptado.TargetPosition.ToVector3()
+            : Vector3.zero;
+
+        BehaviorType nombreDeseo =
+            accion == ActionType.BLOCK_EXIT.ToString() ? BehaviorType.BlockExit :
+            accion == ActionType.SEARCH_AREA.ToString() ? BehaviorType.SearchAssigned :
+            BehaviorType.Search;
+
+        deseos.Add(new Desire(nombreDeseo, 75f, pos, creencias.ConversacionRequest));
+    }
+
+    private void AgregarIntercepcionSiProcede(List<Desire> deseos, TacticalPhase fase)
+    {
+        int maxInterceptores;
+        float prioridadBase;
+
+        switch (fase)
+        {
+            case TacticalPhase.RingSafeThiefKnown:
+                maxInterceptores = 2;
+                prioridadBase = 92f;
+                break;
+            case TacticalPhase.RingSafeThiefLost:
+                maxInterceptores = 2;
+                prioridadBase = 74f;
+                break;
+            case TacticalPhase.RingStolenThiefKnown:
+                maxInterceptores = 2;
+                prioridadBase = 90f;
+                break;
+            case TacticalPhase.RingStolenThiefLost:
+                maxInterceptores = 2;
+                prioridadBase = 76f;
+                break;
+            default:
+                return;
+        }
+
+        bool faseConLadronLocalizado = fase == TacticalPhase.RingSafeThiefKnown ||
+                                       fase == TacticalPhase.RingStolenThiefKnown;
+        if (!faseConLadronLocalizado && !creencias.TieneObjetivoCriticoActual())
+            return;
+
+        Vector3 referenciaSeleccion = faseConLadronLocalizado
+            ? creencias.UltimaPosicionLadron
+            : creencias.CalcularPuntoInterceptacion(0);
+        int maxCandidatos = maxInterceptores + (faseConLadronLocalizado ? 1 : 0);
+
+        bool soyInterceptorActual = creencias.EstadoActual == BehaviorType.Intercept;
+        if (!soyInterceptorActual &&
+            !creencias.SoyEntreMasCercanosA(referenciaSeleccion, maxCandidatos))
+            return;
+
+        if (!soyInterceptorActual &&
+            creencias.GuardiasEnEstado(BehaviorType.Intercept) >= maxInterceptores)
+            return;
+
+        Vector3 punto = creencias.CalcularPuntoInterceptacion();
+        deseos.Add(new Desire(
+            BehaviorType.Intercept,
+            PrioridadPorCercania(prioridadBase, punto, 0.12f),
+            punto
+        ));
+    }
+
+    private void AgregarDefensaPedestalSiProcede(List<Desire> deseos, TacticalPhase fase)
+    {
+        if (creencias.AnilloRobado || !creencias.TienePosicionPedestal)
+            return;
+
+        if (fase != TacticalPhase.RingSafeThiefKnown &&
+            fase != TacticalPhase.RingSafeThiefLost)
+            return;
+
+        bool soyGuardaPedestal = creencias.EstadoActual == BehaviorType.CheckPedestal;
+        if (!soyGuardaPedestal &&
+            creencias.GuardiasEnEstado(BehaviorType.CheckPedestal) >= 1)
+            return;
+
+        deseos.Add(new Desire(
+            BehaviorType.CheckPedestal,
+            PrioridadPorCercania(86f, creencias.PosicionPedestal, 0.18f),
+            creencias.PosicionPedestal
+        ));
+    }
+
+    private void AgregarBusquedaSiProcede(List<Desire> deseos, TacticalPhase fase)
+    {
+        if (fase != TacticalPhase.RingSafeThiefLost &&
+            fase != TacticalPhase.RingStolenThiefLost)
+            return;
+
+        const int MAX_BUSCADORES = 2;
+        bool soyBuscadorActual = creencias.EstadoActual == BehaviorType.Search;
+        if (!soyBuscadorActual &&
+            creencias.GuardiasBuscando() >= MAX_BUSCADORES)
+            return;
+
+        deseos.Add(new Desire(
+            BehaviorType.Search,
+            PrioridadPorCercania(70f, creencias.UltimaPosicionLadron, 0.1f),
+            creencias.UltimaPosicionLadron
+        ));
+    }
+
+    private void AgregarBloqueoSalidaSiProcede(List<Desire> deseos, TacticalPhase fase)
+    {
+        if (!creencias.AnilloRobado) return;
+
+        const int MAX_BLOQUEADORES = 2;
+        bool soyBloqueadorActual = creencias.EstadoActual == BehaviorType.BlockExit;
+        if (!soyBloqueadorActual &&
+            creencias.GuardiasEnEstado(BehaviorType.BlockExit) >= MAX_BLOQUEADORES)
+            return;
+
+        float prioridadBloqueo = fase == TacticalPhase.RingStolenThiefKnown ? 94f : 96f;
+        deseos.Add(new Desire(BehaviorType.BlockExit, prioridadBloqueo));
+    }
+
+    private float PrioridadPorCercania(float basePrioridad, Vector3 objetivo, float penalizacionPorMetro)
+    {
+        float distancia = Vector3.Distance(creencias.MiPosicion, objetivo);
+        return basePrioridad - distancia * penalizacionPorMetro;
     }
 }

@@ -3,6 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+public enum TacticalPhase
+{
+    NormalPatrol,
+    RingSafeThiefKnown,
+    RingSafeThiefLost,
+    RingStolenThiefKnown,
+    RingStolenThiefLost
+}
+
 [System.Serializable]
 public class BeliefBase
 {
@@ -75,6 +84,31 @@ public class BeliefBase
     public bool DebeComprobarPedestal { get; set; } = false;
     public bool DebeBuscarAlrededorPedestal { get; set; } = false;
     public float UltimoChequeoPedestal { get; private set; } = -100f;
+
+    // EVENTOS DE COMUNICACIÓN PENDIENTES
+    // La capa de percepción (sensores) los activa al detectar cambios relevantes.
+    // La capa de comunicación (GestionarComunicacionReactiva en GuardAgent) los
+    // consume cada frame, desacoplando ambas capas: añadir un nuevo sensor solo
+    // requiere actualizar creencias y activar el flag correspondiente.
+
+    /// <summary>El ladrón acaba de perderse de vista — comunicar THIEF_LOST e iniciar búsqueda coordinada.</summary>
+    public bool PendienteComunicarLadronPerdido { get; set; } = false;
+
+    /// <summary>El pedestal del anillo está vacío — comunicar RING_STOLEN al equipo.</summary>
+    public bool PendienteComunicarAnilloDesaparecido { get; set; } = false;
+
+    /// <summary>Se ha visto al ladrón portando el anillo — comunicar RING_STOLEN con contexto adicional.</summary>
+    public bool PendienteComunicarLadronConAnillo { get; set; } = false;
+
+    /// <summary>Primera detección del ladrón en este ciclo — forzar avistamiento inmediato sin throttle.</summary>
+    public bool PrimerAvistamiento { get; set; } = false;
+
+    /// <summary>
+    /// Se ha producido un cambio de creencias relevante que puede alterar la intención óptima
+    /// (tarea asignada vía Contract-Net, anillo robado recibido por mensaje...).
+    /// GuardAgent lo consume para forzar una ronda de deliberación inmediata.
+    /// </summary>
+    public bool NecesitaDeliberar { get; set; } = false;
 
     // CREENCIAS SOBRE OTROS AGENTES
 
@@ -169,6 +203,7 @@ public class BeliefBase
             // las únicas relevantes, así que el tracking previo de zonas generales
             // ya no aporta y conviene partir de cero.
             ultimaBusquedaPorZona.Clear();
+            NecesitaDeliberar = true; // BlockExit(95) entra en juego
         }
     }
 
@@ -292,6 +327,106 @@ public class BeliefBase
             .FirstOrDefault();
     }
 
+    public TacticalPhase FaseActual()
+    {
+        if (AnilloRobado)
+            return TieneInfoReciente(8f)
+                ? TacticalPhase.RingStolenThiefKnown
+                : TacticalPhase.RingStolenThiefLost;
+
+        if (TieneInfoReciente(8f))
+            return TacticalPhase.RingSafeThiefKnown;
+
+        if (TieneInfoReciente(25f))
+            return TacticalPhase.RingSafeThiefLost;
+
+        return TacticalPhase.NormalPatrol;
+    }
+
+    public Vector3 ObjetivoCriticoActual()
+    {
+        if (AnilloRobado && TienePosicionSalida)
+            return PosicionSalida;
+
+        if (!AnilloRobado && TienePosicionPedestal)
+            return PosicionPedestal;
+
+        return UltimaPosicionLadron;
+    }
+
+    public bool TieneObjetivoCriticoActual()
+    {
+        return AnilloRobado ? TienePosicionSalida : TienePosicionPedestal;
+    }
+
+    public int CarrilInterceptacion()
+    {
+        int hash = 0;
+        foreach (char c in MiId)
+            hash += c;
+
+        int modulo = Mathf.Abs(hash) % 3;
+        if (modulo == 0) return -1;
+        if (modulo == 1) return 0;
+        return 1;
+    }
+
+    public Vector3 CalcularPuntoInterceptacion(float distanciaAdelante = 6f, float distanciaLateral = 4f)
+    {
+        return CalcularPuntoInterceptacion(CarrilInterceptacion(), distanciaAdelante, distanciaLateral);
+    }
+
+    public Vector3 CalcularPuntoInterceptacion(int carril, float distanciaAdelante = 6f, float distanciaLateral = 4f)
+    {
+        if (FaseActual() == TacticalPhase.RingSafeThiefKnown)
+            return CalcularPuntoCierreSobreLadron(carril, distanciaAdelante, distanciaLateral);
+
+        return CalcularPuntoCorteRuta(carril, distanciaAdelante, distanciaLateral);
+    }
+
+    private Vector3 CalcularPuntoCierreSobreLadron(int carril, float distanciaAdelante, float distanciaLateral)
+    {
+        Vector3 direccionCierre = TieneDireccionLadron
+            ? UltimaDireccionLadron
+            : (UltimaPosicionLadron - MiPosicion);
+        direccionCierre.y = 0f;
+
+        if (direccionCierre.sqrMagnitude < 0.01f)
+            return UltimaPosicionLadron;
+
+        direccionCierre.Normalize();
+        Vector3 lateral = Vector3.Cross(Vector3.up, direccionCierre).normalized;
+
+        return UltimaPosicionLadron
+            + direccionCierre * distanciaAdelante
+            + lateral * carril * distanciaLateral;
+    }
+
+    private Vector3 CalcularPuntoCorteRuta(int carril, float distanciaAdelante, float distanciaLateral)
+    {
+        Vector3 objetivo = ObjetivoCriticoActual();
+        Vector3 direccionObjetivo = objetivo - UltimaPosicionLadron;
+        direccionObjetivo.y = 0f;
+
+        if (direccionObjetivo.sqrMagnitude < 0.01f)
+        {
+            direccionObjetivo = TieneDireccionLadron
+                ? UltimaDireccionLadron
+                : (UltimaPosicionLadron - MiPosicion);
+            direccionObjetivo.y = 0f;
+        }
+
+        if (direccionObjetivo.sqrMagnitude < 0.01f)
+            return UltimaPosicionLadron;
+
+        direccionObjetivo.Normalize();
+        Vector3 lateral = Vector3.Cross(Vector3.up, direccionObjetivo).normalized;
+
+        return UltimaPosicionLadron
+            + direccionObjetivo * distanciaAdelante
+            + lateral * carril * distanciaLateral;
+    }
+
     /// <summary>
     /// Elimina un guardia del registro de estados (cuando se desconecta o destruye).
     /// </summary>
@@ -330,6 +465,7 @@ public class BeliefBase
         TareaAsignada = tarea;
         ConversacionTareaAsignada = conversacionId;
         AsignadorTarea = asignador;
+        NecesitaDeliberar = true; // SearchAssigned(85) entra en juego
     }
 
 
@@ -382,6 +518,20 @@ public class BeliefBase
             if (par.Value.CurrentState == BehaviorType.Pursuit.ToString())
                 count++;
         }
+        return count;
+    }
+
+    public int GuardiasEnEstado(BehaviorType estado)
+    {
+        int count = EstadoActual == estado ? 1 : 0;
+        string nombreEstado = estado.ToString();
+
+        foreach (var par in EstadosOtrosGuardias)
+        {
+            if (par.Value.CurrentState == nombreEstado)
+                count++;
+        }
+
         return count;
     }
 
@@ -450,6 +600,27 @@ public class BeliefBase
                 return false;
         }
         return true;
+    }
+
+    public bool SoyEntreMasCercanosA(Vector3 posicion, int maxAgentes)
+    {
+        float miDistancia = Vector3.Distance(MiPosicion, posicion);
+        int mejores = 0;
+
+        foreach (var par in EstadosOtrosGuardias)
+        {
+            if (par.Value.CurrentPosition == null) continue;
+
+            float suDistancia = Vector3.Distance(par.Value.CurrentPosition.ToVector3(), posicion);
+            bool estaMasCerca = suDistancia < miDistancia - 0.25f;
+            bool empataConMejorId = Mathf.Abs(suDistancia - miDistancia) <= 0.25f &&
+                                    string.Compare(par.Key, MiId) < 0;
+
+            if (estaMasCerca || empataConMejorId)
+                mejores++;
+        }
+
+        return mejores < maxAgentes;
     }
 
 }

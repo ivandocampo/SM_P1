@@ -497,7 +497,7 @@ MonoBehaviour:
   anguloVision: 60
   capasObstaculos:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 1
   alturaOjos: 1.5
   alturaObjetivo: 1
   objetoAnillo: {fileID: 458616568}
@@ -6464,7 +6464,7 @@ MonoBehaviour:
   anguloVision: 60
   capasObstaculos:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 1
   alturaOjos: 1.5
   alturaObjetivo: 1
   objetoAnillo: {fileID: 458616568}
@@ -18059,7 +18059,7 @@ MonoBehaviour:
   anguloVision: 60
   capasObstaculos:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 1
   alturaOjos: 1.5
   alturaObjetivo: 1
   objetoAnillo: {fileID: 458616568}
@@ -24412,7 +24412,7 @@ MonoBehaviour:
   anguloVision: 60
   capasObstaculos:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 1
   alturaOjos: 1.5
   alturaObjetivo: 1
   objetoAnillo: {fileID: 458616568}
@@ -34082,7 +34082,7 @@ MonoBehaviour:
   anguloVision: 60
   capasObstaculos:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 1
   alturaOjos: 1.5
   alturaObjetivo: 1
   objetoAnillo: {fileID: 458616568}

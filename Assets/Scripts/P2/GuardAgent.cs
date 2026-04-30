@@ -69,6 +69,16 @@ public class GuardAgent : MonoBehaviour
     private int ultimaVentanaChequeoPedestal = -1;
     private float ultimaLimpiezaStale = 0f;
 
+    // Deliberación desacoplada del frame rate: se ejecuta cada INTERVALO_DELIBERACION
+    // segundos o cuando un evento relevante lo fuerza. La ejecución del behavior
+    // activo sí corre cada frame para garantizar movimiento suave.
+    private float tiempoUltimaDeliberacion = 0f;
+    private bool deliberacionPendiente = false;
+    private const float INTERVALO_DELIBERACION = 0.5f;
+    private bool busquedaCoordinadaPendiente = false;
+    private float tiempoPerdidaLadron = -100f;
+    private const float RETARDO_BUSQUEDA_COORDINADA = 3f;
+
     // INICIALIZACIÓN
 
     void Start()
@@ -94,10 +104,13 @@ public class GuardAgent : MonoBehaviour
         behaviors[BehaviorType.Pursuit]        = new PursuitBehavior();
         behaviors[BehaviorType.Search]         = new SearchBehavior(12f, 4, 10f);
         behaviors[BehaviorType.SearchAssigned] = new SearchAssignedBehavior();
+        behaviors[BehaviorType.Intercept]      = new InterceptBehavior();
         behaviors[BehaviorType.BlockExit]      = new BlockExitBehavior(puntoSalida, puntosBloqueoSalida);
         behaviors[BehaviorType.CheckPedestal]  = new CheckPedestalBehavior(pedestalAnillo);
 
         temporizadorHeartbeat = Random.Range(0f, intervaloHeartbeatEstado);
+        if (tiempoEntreComprobaciones > 0f)
+            ultimaVentanaChequeoPedestal = Mathf.FloorToInt(Time.time / tiempoEntreComprobaciones);
 
         if (pedestalAnillo != null)
         {
@@ -183,25 +196,39 @@ public class GuardAgent : MonoBehaviour
 
         if (ComprobarCaptura()) return;
 
+        // Ejecución del behavior y Contract-Net: cada frame para movimiento suave
+        EjecutarBehaviorActivo();
+        contractNetManager.Gestionar();
+
+        // Percepción y comunicación: cada frame para reaccionar sin latencia
         comunicacion.ProcesarMensajes();
+        GestionarComunicacionReactiva();
+
+        // Mantenimiento periódico
         ActualizarTemporizadorComprobacion();
         ActualizarHeartbeatEstado();
-
         if (Time.time - ultimaLimpiezaStale > 10f)
         {
             creencias.LimpiarGuardiasStale();
             ultimaLimpiezaStale = Time.time;
         }
 
-        List<Desire> deseos = generadorDeseos.GenerarDeseos();
-        selectorIntenciones.Seleccionar(deseos, creencias);
+        // Deliberación BDI: solo cuando algo relevante ha cambiado o cada 0.5s
+        // como fallback. Desacoplada del frame rate para no generar deseos 60 veces
+        // por segundo cuando las creencias no han cambiado.
+        if (deliberacionPendiente || creencias.NecesitaDeliberar ||
+            Time.time - tiempoUltimaDeliberacion >= INTERVALO_DELIBERACION)
+        {
+            tiempoUltimaDeliberacion = Time.time;
+            deliberacionPendiente = false;
+            creencias.NecesitaDeliberar = false;
 
-        if (selectorIntenciones.CambioDeIntencion)
-            ActivarBehavior(selectorIntenciones.NombreIntencion);
+            List<Desire> deseos = generadorDeseos.GenerarDeseos();
+            selectorIntenciones.Seleccionar(deseos, creencias);
 
-        EjecutarBehaviorActivo();
-        contractNetManager.Gestionar();
-
+            if (selectorIntenciones.CambioDeIntencion)
+                ActivarBehavior(selectorIntenciones.NombreIntencion);
+        }
     }
 
     
@@ -220,41 +247,46 @@ public class GuardAgent : MonoBehaviour
         return false;
     }
 
-    // MANEJADORES DE SENSORES
+    // CAPA DE PERCEPCIÓN — Manejadores de sensores
+    // Solo actualizan creencias y activan flags de comunicación pendiente.
+    // Ningún sensor llama directamente a ProtocolHandler ni a ContractNetManager.
 
     private void OnLadronVisto(Vector3 posicion)
     {
         Vector3 direccion = CalcularDireccionObservada(posicion);
-        bool tieneDireccion = direccion.sqrMagnitude > 0.01f;
-
-        creencias.ActualizarPosicionLadron(posicion, Time.time, true, agentId, direccion, tieneDireccion);
+        creencias.ActualizarPosicionLadron(posicion, Time.time, true, agentId,
+            direccion, direccion.sqrMagnitude > 0.01f);
+        creencias.PrimerAvistamiento = true;
+        busquedaCoordinadaPendiente = false;
+        deliberacionPendiente = true; // Pursuit(100) puede entrar en juego
         ComprobarSiLlevaAnillo();
-        InformarAvistamiento(posicion, direccion, tieneDireccion, true);
     }
 
     private void OnLadronSigueVisible(Vector3 posicion)
     {
         Vector3 direccion = CalcularDireccionObservada(posicion);
-        bool tieneDireccion = direccion.sqrMagnitude > 0.01f;
-
-        creencias.ActualizarPosicionLadron(posicion, Time.time, true, agentId, direccion, tieneDireccion);
+        creencias.ActualizarPosicionLadron(posicion, Time.time, true, agentId,
+            direccion, direccion.sqrMagnitude > 0.01f);
+        busquedaCoordinadaPendiente = false;
         ComprobarSiLlevaAnillo();
-        InformarAvistamiento(posicion, direccion, tieneDireccion, false);
+        // No fuerza deliberación: ya estamos en Pursuit, solo actualizamos posición
     }
 
     private void OnLadronPerdido()
     {
         creencias.MarcarLadronPerdido();
-        protocolHandler.InformarPredicado(PredicateType.THIEF_LOST);
-        contractNetManager.IniciarDistribucionBusqueda();
+        creencias.PendienteComunicarLadronPerdido = true;
+        busquedaCoordinadaPendiente = true;
+        tiempoPerdidaLadron = Time.time;
+        deliberacionPendiente = true; // Pursuit desaparece, Search/BlockExit entran
     }
 
     private void OnAnilloDesaparecido()
     {
-        creencias.MarcarAnilloRobado();
+        creencias.MarcarAnilloRobado(); // activa NecesitaDeliberar internamente
         creencias.DebeBuscarAlrededorPedestal = false;
         creencias.DebeComprobarPedestal = false;
-        protocolHandler.InformarPredicado(PredicateType.RING_STOLEN);
+        creencias.PendienteComunicarAnilloDesaparecido = true;
         Debug.Log($"[{agentId}] Anillo robado detectado");
     }
 
@@ -267,39 +299,79 @@ public class GuardAgent : MonoBehaviour
     {
         if (sensorVision == null ||
             !sensorVision.ObjetivoVisibleConAnillo ||
-            creencias.LadronVistoConAnillo)
-        {
-            return;
-        }
+            creencias.LadronVistoConAnillo) return;
 
         creencias.MarcarLadronConAnillo();
-        protocolHandler.InformarPredicado(PredicateType.RING_STOLEN, "seen-carrying-ring");
+        creencias.PendienteComunicarLadronConAnillo = true;
         Debug.Log($"[{agentId}] Ladrón visto llevando el anillo");
     }
 
     private Vector3 CalcularDireccionObservada(Vector3 nuevaPosicion)
     {
-        if (!creencias.TieneInfoReciente(2f))
-            return Vector3.zero;
+        if (!creencias.TieneInfoReciente(2f)) return Vector3.zero;
 
         Vector3 delta = nuevaPosicion - creencias.UltimaPosicionLadron;
-        if (delta.sqrMagnitude < 0.04f)
-            return Vector3.zero;
+        if (delta.sqrMagnitude < 0.04f) return Vector3.zero;
 
         delta.y = 0f;
         return delta.normalized;
     }
 
-    private void InformarAvistamiento(Vector3 posicion, Vector3 direccion, bool tieneDireccion, bool forzar)
+    // CAPA DE COMUNICACIÓN REACTIVA
+    // Consume los flags de comunicación pendiente y decide qué mensajes FIPA
+    // enviar. Se ejecuta cada frame desde Update(), después de procesar el buzón
+    // y antes del ciclo BDI. Esta capa actúa como puente explícito entre
+    // percepción y comportamiento, manteniendo ambas capas desacopladas:
+    // añadir un nuevo sensor solo requiere actualizar creencias + activar un flag.
+    private void GestionarComunicacionReactiva()
     {
+        // Avistamiento continuo del ladrón — con throttle, forzado en primera detección
+        if (creencias.LadronVisible)
+            InformarAvistamientoSiProcede();
+
+        // Ladrón perdido de vista — comunicar al equipo e iniciar búsqueda coordinada
+        if (creencias.PendienteComunicarLadronPerdido)
+        {
+            protocolHandler.InformarPredicado(PredicateType.THIEF_LOST);
+            creencias.PendienteComunicarLadronPerdido = false;
+        }
+
+        if (busquedaCoordinadaPendiente &&
+            Time.time - tiempoPerdidaLadron >= RETARDO_BUSQUEDA_COORDINADA)
+        {
+            contractNetManager.IniciarDistribucionBusqueda();
+            busquedaCoordinadaPendiente = false;
+        }
+
+        // Anillo desaparecido del pedestal — alertar al equipo
+        if (creencias.PendienteComunicarAnilloDesaparecido)
+        {
+            protocolHandler.InformarPredicado(PredicateType.RING_STOLEN);
+            creencias.PendienteComunicarAnilloDesaparecido = false;
+        }
+
+        // Ladrón visto portando el anillo — alertar al equipo con contexto adicional
+        if (creencias.PendienteComunicarLadronConAnillo)
+        {
+            protocolHandler.InformarPredicado(PredicateType.RING_STOLEN, "seen-carrying-ring");
+            creencias.PendienteComunicarLadronConAnillo = false;
+        }
+    }
+
+    private void InformarAvistamientoSiProcede()
+    {
+        bool forzar = creencias.PrimerAvistamiento;
         if (!forzar && Time.time - ultimoInformeAvistamiento < intervaloActualizacionAvistamiento)
             return;
 
         ultimoInformeAvistamiento = Time.time;
+        creencias.PrimerAvistamiento = false;
+
         protocolHandler.InformarAvistamiento(new ThiefSighting
         {
-            Location     = new Position(posicion),
-            Direction    = tieneDireccion ? new Position(direccion) : null,
+            Location     = new Position(creencias.UltimaPosicionLadron),
+            Direction    = creencias.TieneDireccionLadron
+                           ? new Position(creencias.UltimaDireccionLadron) : null,
             Timestamp    = Time.time,
             ReportedBy   = agentId,
             DirectVision = true
@@ -392,6 +464,7 @@ public class GuardAgent : MonoBehaviour
             behaviorActivo = null;
             behaviorActivo_tipo = BehaviorType.None;
             selectorIntenciones.ForzarReset();
+            deliberacionPendiente = true; // behavior completado, elegir siguiente
         }
     }
 

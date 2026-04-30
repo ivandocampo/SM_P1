@@ -54,8 +54,8 @@ public class IntentionSelector
         if (Time.time - tiempoUltimoBehaviorChange < cooldownPostCambio)
         {
             // Excepción: persecución directa siempre se acepta inmediatamente
-            Desire mejorDeseo = deseos[0];
-            if (mejorDeseo.Nombre == BehaviorType.Pursuit && mejorDeseo.Prioridad >= 100f
+            Desire candidato = deseos[0];
+            if (candidato.Nombre == BehaviorType.Pursuit && candidato.Prioridad >= 100f
                 && IntencionActual?.Nombre != BehaviorType.Pursuit)
             {
                 // Permitir cambio solo para persecución de alta prioridad
