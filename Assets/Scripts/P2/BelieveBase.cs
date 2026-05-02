@@ -41,6 +41,12 @@ public class BeliefBase
     /// <summary>Antigüedad en segundos de la última información sobre el ladrón.</summary>
     public float AntiguedadInfoLadron => Time.time - TiempoUltimaDeteccion;
 
+    /// <summary>Si la última detección reciente procede de un sensor propio, no de un mensaje.</summary>
+    public bool TieneDeteccionPropiaReciente(float maxAge = 8f)
+    {
+        return FuenteUltimaDeteccion == MiId && TieneInfoReciente(maxAge);
+    }
+
     /// <summary>Dirección más reciente conocida del ladrón.</summary>
     public Vector3 UltimaDireccionLadron { get; private set; } = Vector3.zero;
 
@@ -83,6 +89,8 @@ public class BeliefBase
 
     public bool DebeComprobarPedestal { get; set; } = false;
     public bool DebeBuscarAlrededorPedestal { get; set; } = false;
+    public bool BuscarLocalAntesDeCoordinar { get; set; } = false;
+    public bool ComprobarPedestalTrasBusquedaLocal { get; set; } = false;
     public float UltimoChequeoPedestal { get; private set; } = -100f;
 
     // EVENTOS DE COMUNICACIÓN PENDIENTES

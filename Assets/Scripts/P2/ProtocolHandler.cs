@@ -166,7 +166,7 @@ public class ProtocolHandler
 
     public void ManejarCFP(ACLMessage msg, ActuadorMovimiento actuador)
     {
-        if (creencias.EstadoActual == BehaviorType.Pursuit)
+        if (creencias.EstadoActual == BehaviorType.Pursuit && creencias.LadronVisible)
         {
             RechazarCFP(msg, "in-pursuit");
             return;

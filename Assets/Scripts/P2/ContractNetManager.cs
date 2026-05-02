@@ -51,13 +51,14 @@ public class ContractNetManager
         if (Time.time - ultimoContractNet < cooldownEfectivo) return;
         if (contratosActivos.Count > 0) return;
 
-        if (!SoyElIniciadorMasApropiado()) return;
+        List<string> participantes = AgentRegistry.Instance
+            .ObtenerIdsPorTipo("guard");
+        if (!creencias.AnilloRobado)
+            participantes.Remove(agentId);
 
-        List<string> otrosGuardias = AgentRegistry.Instance
-            .ObtenerOtrosIdsPorTipo("guard", agentId);
-        if (otrosGuardias.Count == 0) return;
+        if (participantes.Count == 0) return;
 
-        List<string> zonas = SeleccionarZonasParaContratar(otrosGuardias.Count);
+        List<string> zonas = SeleccionarZonasParaContratar(participantes.Count);
         if (zonas.Count == 0)
         {
             Debug.LogWarning($"[{agentId}] Contract Net sin zonas registradas");
@@ -68,10 +69,10 @@ public class ContractNetManager
 
         foreach (string zoneId in zonas)
         {
-            AbrirContratoParaZona(zoneId, otrosGuardias);
+            AbrirContratoParaZona(zoneId, participantes);
         }
 
-        Debug.Log($"[{agentId}] Contract Net iniciado: {zonas.Count} zonas, {otrosGuardias.Count} guardias");
+        Debug.Log($"[{agentId}] Contract Net iniciado: {zonas.Count} zonas, {participantes.Count} guardias");
     }
 
     // Evalúa los contratos abiertos cuando todos están listos y hace el matching
@@ -121,12 +122,36 @@ public class ContractNetManager
         if (creencias.AnilloRobado)
         {
             var exitZones = zonasDisponibles
-                .Where(z => z.StartsWith("Exit_", System.StringComparison.OrdinalIgnoreCase))
+                .Where(EsZonaSalida)
                 .ToList();
             if (exitZones.Count > 0) candidatas = exitZones;
 
             if (creencias.TienePosicionSalida)
                 referencia = creencias.PosicionSalida;
+        }
+        else
+        {
+            var ringZones = zonasDisponibles
+                .Where(EsZonaAnillo)
+                .ToList();
+            if (ringZones.Count > 0)
+            {
+                candidatas = ringZones;
+                if (creencias.TienePosicionPedestal)
+                    referencia = creencias.PosicionPedestal;
+            }
+            else
+            {
+                var nonExitZones = zonasDisponibles
+                    .Where(z => !EsZonaSalida(z))
+                    .ToList();
+                if (nonExitZones.Count > 0)
+                {
+                    candidatas = nonExitZones;
+                    if (creencias.TienePosicionPedestal)
+                        referencia = creencias.PosicionPedestal;
+                }
+            }
         }
 
         // Orden primario: zona más antigua sin barrer (rotación natural).
@@ -136,6 +161,22 @@ public class ContractNetManager
             .ThenBy(z => Vector3.Distance(creencias.ObtenerCentroZona(z), referencia))
             .Take(maxZonas)
             .ToList();
+    }
+
+    private bool EsZonaSalida(string zoneId)
+    {
+        return !string.IsNullOrEmpty(zoneId) &&
+               (zoneId.StartsWith("Exit_", System.StringComparison.OrdinalIgnoreCase) ||
+                zoneId.StartsWith("Salida_", System.StringComparison.OrdinalIgnoreCase));
+    }
+
+    private bool EsZonaAnillo(string zoneId)
+    {
+        if (string.IsNullOrEmpty(zoneId)) return false;
+
+        return zoneId.StartsWith("Ring_", System.StringComparison.OrdinalIgnoreCase) ||
+               zoneId.StartsWith("Anillo_", System.StringComparison.OrdinalIgnoreCase) ||
+               zoneId.StartsWith("Pedestal_", System.StringComparison.OrdinalIgnoreCase);
     }
 
     // APERTURA DE CONTRATO Y ENVÍO DE CFP

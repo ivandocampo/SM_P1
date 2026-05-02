@@ -51,7 +51,8 @@ public class IntentionSelector
         }
 
         // Verificar cooldown post-cambio para evitar oscilación
-        if (Time.time - tiempoUltimoBehaviorChange < cooldownPostCambio)
+        if (IntencionActual != null &&
+            Time.time - tiempoUltimoBehaviorChange < cooldownPostCambio)
         {
             // Excepción: persecución directa siempre se acepta inmediatamente
             Desire candidato = deseos[0];

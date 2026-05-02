@@ -31,6 +31,12 @@ public class GuardAgent : MonoBehaviour
     public float intervaloHeartbeatEstado = 2.5f;
     public float intervaloActualizacionAvistamiento = 0.6f;
 
+    [Header("Debug Visual")]
+    public bool mostrarDebugEnPantalla = true;
+    public bool mostrarMarcadorDebug = true;
+    public Vector2 posicionPanelDebug = new Vector2(12f, 12f);
+    public float anchoPanelDebug = 520f;
+
     
 
     // COMPONENTES
@@ -77,7 +83,13 @@ public class GuardAgent : MonoBehaviour
     private const float INTERVALO_DELIBERACION = 0.5f;
     private bool busquedaCoordinadaPendiente = false;
     private float tiempoPerdidaLadron = -100f;
-    private const float RETARDO_BUSQUEDA_COORDINADA = 3f;
+    private const float RETARDO_BUSQUEDA_COORDINADA = 5f;
+    private static float ultimaRondaBusquedaCoordinada = -100f;
+    private static Vector3 ultimaPosicionRondaBusqueda = Vector3.positiveInfinity;
+    private const float DISTANCIA_MISMA_RONDA_BUSQUEDA = 2f;
+    private static GUIStyle estiloDebugPanel;
+    private static GUIStyle estiloDebugTitulo;
+    private static List<GuardAgent> guardiasDebug = new List<GuardAgent>();
 
     // INICIALIZACIÓN
 
@@ -89,6 +101,8 @@ public class GuardAgent : MonoBehaviour
         actuador = GetComponent<ActuadorMovimiento>();
 
         comunicacion.Inicializar(agentId, "guard");
+        if (!guardiasDebug.Contains(this))
+            guardiasDebug.Add(this);
 
         // BDI
         creencias = new BeliefBase(agentId);
@@ -183,6 +197,7 @@ public class GuardAgent : MonoBehaviour
         }
 
         contractNetManager?.Limpiar();
+        guardiasDebug.Remove(this);
     }
 
     // CICLO PRINCIPAL
@@ -231,6 +246,11 @@ public class GuardAgent : MonoBehaviour
         }
     }
 
+    void OnGUI()
+    {
+        DibujarPanelDebug();
+    }
+
     
 
     // CAPA REACTIVA
@@ -247,6 +267,132 @@ public class GuardAgent : MonoBehaviour
         return false;
     }
 
+    private Color ColorPorBehavior(BehaviorType tipo)
+    {
+        switch (tipo)
+        {
+            case BehaviorType.Pursuit: return new Color(0.85f, 0.12f, 0.12f);
+            case BehaviorType.Intercept: return new Color(0.95f, 0.65f, 0.08f);
+            case BehaviorType.Search:
+            case BehaviorType.SearchAssigned: return new Color(0.1f, 0.35f, 0.85f);
+            case BehaviorType.BlockExit: return new Color(0.45f, 0.15f, 0.75f);
+            case BehaviorType.CheckPedestal: return new Color(0.9f, 0.9f, 0.9f);
+            case BehaviorType.Patrol: return new Color(0.1f, 0.55f, 0.2f);
+            default: return new Color(0.25f, 0.25f, 0.25f);
+        }
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (!mostrarMarcadorDebug) return;
+
+        Gizmos.color = Application.isPlaying ? ColorPorBehavior(behaviorActivo_tipo) : Color.cyan;
+        Vector3 centro = transform.position + Vector3.up * 1.8f;
+        Gizmos.DrawSphere(centro, 0.45f);
+        Gizmos.DrawLine(transform.position, centro);
+    }
+
+    private void DibujarPanelDebug()
+    {
+        if (!mostrarDebugEnPantalla || guardiasDebug.Count == 0) return;
+
+        List<GuardAgent> ordenados = new List<GuardAgent>(guardiasDebug);
+        ordenados.RemoveAll(g => g == null);
+        ordenados.Sort((a, b) => string.Compare(a.agentId, b.agentId, System.StringComparison.Ordinal));
+        if (ordenados.Count == 0 || ordenados[0] != this) return;
+
+        if (estiloDebugPanel == null)
+        {
+            estiloDebugPanel = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 13,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleLeft,
+                wordWrap = false,
+                clipping = TextClipping.Clip
+            };
+            estiloDebugPanel.normal.textColor = Color.white;
+        }
+
+        if (estiloDebugTitulo == null)
+        {
+            estiloDebugTitulo = new GUIStyle(estiloDebugPanel)
+            {
+                fontSize = 15,
+                alignment = TextAnchor.MiddleLeft
+            };
+            estiloDebugTitulo.normal.textColor = Color.white;
+        }
+
+        float x = posicionPanelDebug.x;
+        float y = posicionPanelDebug.y;
+        float ancho = anchoPanelDebug;
+        float alto = 34f + ordenados.Count * 23f;
+
+        Color anterior = GUI.color;
+        GUI.color = new Color(0f, 0f, 0f, 0.95f);
+        GUI.Box(new Rect(x, y, ancho, alto), GUIContent.none);
+        GUI.color = anterior;
+
+        GUI.Label(new Rect(x + 10f, y + 6f, ancho - 20f, 22f), "DEBUG GUARDIAS", estiloDebugTitulo);
+
+        for (int i = 0; i < ordenados.Count; i++)
+        {
+            GuardAgent guardia = ordenados[i];
+            if (guardia == null || guardia.creencias == null) continue;
+
+            string zona = guardia.creencias.TareaAsignada != null ? guardia.creencias.TareaAsignada.ZoneId : "-";
+            string linea = $"{AbreviarAgente(guardia.agentId),-4} {AbreviarBehavior(guardia.behaviorActivo_tipo),-10} {AbreviarFase(guardia.creencias.FaseActual()),-13} Z:{zona}";
+
+            GUI.color = guardia.ColorPorBehavior(guardia.behaviorActivo_tipo);
+            GUI.DrawTexture(new Rect(x + 10f, y + 38f + i * 23f, 12f, 12f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(x + 32f, y + 31f + i * 23f, ancho - 42f, 22f), linea, estiloDebugPanel);
+        }
+
+        GUI.color = anterior;
+    }
+
+    private static string AbreviarFase(TacticalPhase fase)
+    {
+        switch (fase)
+        {
+            case TacticalPhase.NormalPatrol: return "Normal";
+            case TacticalPhase.RingSafeThiefKnown: return "SinAnillo/V";
+            case TacticalPhase.RingSafeThiefLost: return "SinAnillo/P";
+            case TacticalPhase.RingStolenThiefKnown: return "Anillo/V";
+            case TacticalPhase.RingStolenThiefLost: return "Anillo/P";
+            default: return fase.ToString();
+        }
+    }
+
+    private static string AbreviarBehavior(BehaviorType tipo)
+    {
+        switch (tipo)
+        {
+            case BehaviorType.Patrol: return "Patrol";
+            case BehaviorType.Pursuit: return "Pursuit";
+            case BehaviorType.Search: return "Search";
+            case BehaviorType.SearchAssigned: return "SearchZone";
+            case BehaviorType.Intercept: return "Intercept";
+            case BehaviorType.BlockExit: return "BlockExit";
+            case BehaviorType.CheckPedestal: return "Pedestal";
+            case BehaviorType.None: return "Deciding";
+            default: return tipo.ToString();
+        }
+    }
+
+    private static string AbreviarAgente(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return "G?";
+
+        int guion = id.LastIndexOf('_');
+        if (guion >= 0 && guion < id.Length - 1)
+            return "G" + id.Substring(guion + 1);
+
+        return id.Length <= 4 ? id : id.Substring(0, 4);
+    }
+
     // CAPA DE PERCEPCIÓN — Manejadores de sensores
     // Solo actualizan creencias y activan flags de comunicación pendiente.
     // Ningún sensor llama directamente a ProtocolHandler ni a ContractNetManager.
@@ -258,6 +404,8 @@ public class GuardAgent : MonoBehaviour
             direccion, direccion.sqrMagnitude > 0.01f);
         creencias.PrimerAvistamiento = true;
         busquedaCoordinadaPendiente = false;
+        creencias.BuscarLocalAntesDeCoordinar = false;
+        creencias.ComprobarPedestalTrasBusquedaLocal = false;
         deliberacionPendiente = true; // Pursuit(100) puede entrar en juego
         ComprobarSiLlevaAnillo();
     }
@@ -268,6 +416,8 @@ public class GuardAgent : MonoBehaviour
         creencias.ActualizarPosicionLadron(posicion, Time.time, true, agentId,
             direccion, direccion.sqrMagnitude > 0.01f);
         busquedaCoordinadaPendiente = false;
+        creencias.BuscarLocalAntesDeCoordinar = false;
+        creencias.ComprobarPedestalTrasBusquedaLocal = false;
         ComprobarSiLlevaAnillo();
         // No fuerza deliberación: ya estamos en Pursuit, solo actualizamos posición
     }
@@ -277,6 +427,8 @@ public class GuardAgent : MonoBehaviour
         creencias.MarcarLadronPerdido();
         creencias.PendienteComunicarLadronPerdido = true;
         busquedaCoordinadaPendiente = true;
+        creencias.BuscarLocalAntesDeCoordinar = true;
+        creencias.ComprobarPedestalTrasBusquedaLocal = !creencias.AnilloRobado;
         tiempoPerdidaLadron = Time.time;
         deliberacionPendiente = true; // Pursuit desaparece, Search/BlockExit entran
     }
@@ -337,9 +489,12 @@ public class GuardAgent : MonoBehaviour
         }
 
         if (busquedaCoordinadaPendiente &&
-            Time.time - tiempoPerdidaLadron >= RETARDO_BUSQUEDA_COORDINADA)
+            Time.time - tiempoPerdidaLadron >= RETARDO_BUSQUEDA_COORDINADA &&
+            creencias.AntiguedadInfoLadron >= RETARDO_BUSQUEDA_COORDINADA)
         {
-            contractNetManager.IniciarDistribucionBusqueda();
+            if (PuedeIniciarRondaBusquedaCoordinada())
+                contractNetManager.IniciarDistribucionBusqueda();
+
             busquedaCoordinadaPendiente = false;
         }
 
@@ -451,6 +606,7 @@ public class GuardAgent : MonoBehaviour
             if (behaviorActivo_tipo == BehaviorType.CheckPedestal)
             {
                 creencias.RegistrarChequeoPedestal();
+                creencias.ComprobarPedestalTrasBusquedaLocal = false;
                 if (!creencias.AnilloRobado && creencias.TieneInfoReciente(12f))
                     creencias.DebeBuscarAlrededorPedestal = true;
             }
@@ -458,7 +614,10 @@ public class GuardAgent : MonoBehaviour
             // Tras una búsqueda libre (Search), si quedan zonas sin cubrir por el resto
             // del equipo, auto-asignarse la mejor candidata para mantenerse útil.
             if (behaviorActivo_tipo == BehaviorType.Search)
+            {
+                creencias.BuscarLocalAntesDeCoordinar = false;
                 IntentarAutoAsignacionDeZona();
+            }
 
             behaviorActivo.Detener(actuador);
             behaviorActivo = null;
@@ -477,6 +636,12 @@ public class GuardAgent : MonoBehaviour
     // INFORM_DONE asociado al terminar.
     private void IntentarAutoAsignacionDeZona()
     {
+        if (creencias.ComprobarPedestalTrasBusquedaLocal)
+        {
+            creencias.NecesitaDeliberar = true;
+            return;
+        }
+
         string zonaLibre = creencias.ObtenerZonaSinCubrir(soloExit: creencias.AnilloRobado);
         if (string.IsNullOrEmpty(zonaLibre)) return;
 
@@ -493,6 +658,50 @@ public class GuardAgent : MonoBehaviour
         // Asignador vacío indica auto-asignación: al completarse no se notificará a nadie.
         creencias.AsignarTarea(tarea, "", "");
         Debug.Log($"[{agentId}] Auto-asignación a zona libre: {zonaLibre}");
+    }
+
+    private bool PuedeIniciarRondaBusquedaCoordinada()
+    {
+        bool mismaRonda =
+            Time.time - ultimaRondaBusquedaCoordinada < RETARDO_BUSQUEDA_COORDINADA &&
+            Vector3.Distance(ultimaPosicionRondaBusqueda, creencias.UltimaPosicionLadron) < DISTANCIA_MISMA_RONDA_BUSQUEDA;
+
+        if (mismaRonda)
+            return false;
+
+        if (!SoyResponsableDeBusquedaCoordinada())
+            return false;
+
+        ultimaRondaBusquedaCoordinada = Time.time;
+        ultimaPosicionRondaBusqueda = creencias.UltimaPosicionLadron;
+        return true;
+    }
+
+    private bool SoyResponsableDeBusquedaCoordinada()
+    {
+        float miDistancia = Vector3.Distance(transform.position, creencias.UltimaPosicionLadron);
+
+        foreach (var par in AgentRegistry.Instance.ObtenerIdsPorTipo("guard"))
+        {
+            if (par == agentId) continue;
+
+            ComunicacionAgente otro = AgentRegistry.Instance.ObtenerAgente(par);
+            if (otro == null) continue;
+
+            GuardAgent otroGuardia = otro.GetComponent<GuardAgent>();
+            if (otroGuardia == null || !otroGuardia.busquedaCoordinadaPendiente)
+                continue;
+
+            float suDistancia = Vector3.Distance(otroGuardia.transform.position, creencias.UltimaPosicionLadron);
+            if (suDistancia < miDistancia - 0.25f)
+                return false;
+
+            if (Mathf.Abs(suDistancia - miDistancia) <= 0.25f &&
+                string.Compare(otroGuardia.agentId, agentId, System.StringComparison.Ordinal) < 0)
+                return false;
+        }
+
+        return true;
     }
 
     // TEMPORIZADOR PEDESTAL

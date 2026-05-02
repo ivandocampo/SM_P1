@@ -309,12 +309,9 @@ public class SearchAssignedBehavior : IBehavior
 {
     private Vector3[] puntosBusqueda;
     private int indicePunto = 0;
-    private float tiempoInicio;
-    private float duracionMaxima = 15f;
 
     public void Iniciar(BeliefBase creencias, ActuadorMovimiento actuador)
     {
-        tiempoInicio = Time.time;
         indicePunto = 0;
 
         SearchTask tarea = creencias.TareaAsignada;
@@ -343,9 +340,6 @@ public class SearchAssignedBehavior : IBehavior
     public bool Ejecutar(BeliefBase creencias, ActuadorMovimiento actuador)
     {
         if (puntosBusqueda == null || puntosBusqueda.Length == 0) return true;
-
-        if (Time.time - tiempoInicio > duracionMaxima)
-            return true;
 
         if (actuador.HaLlegado(1.5f))
         {
