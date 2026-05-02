@@ -15,6 +15,10 @@ public enum TacticalPhase
 [System.Serializable]
 public class BeliefBase
 {
+    public const float TIEMPO_INFO_TACTICA_LADRON = 8f;
+    public const float TIEMPO_INVESTIGACION_LADRON = 25f;
+    public const float TIEMPO_GRACIA_PERDIDA_LADRON = 1.5f;
+
     // CREENCIAS SOBRE EL LADRÓN
 
     /// <summary>Si el ladrón es visible en este momento (por sensores propios).</summary>
@@ -88,6 +92,7 @@ public class BeliefBase
     public bool Disponible => EstadoActual == BehaviorType.Patrol || EstadoActual == BehaviorType.None;
 
     public bool DebeComprobarPedestal { get; set; } = false;
+    public bool DebeComprobarPedestalPrioritario { get; set; } = false;
     public bool DebeBuscarAlrededorPedestal { get; set; } = false;
     public bool BuscarLocalAntesDeCoordinar { get; set; } = false;
     public bool ComprobarPedestalTrasBusquedaLocal { get; set; } = false;
@@ -198,6 +203,7 @@ public class BeliefBase
     public void MarcarLadronPerdido()
     {
         LadronVisible = false;
+        NecesitaDeliberar = true;
     }
 
     
@@ -220,6 +226,7 @@ public class BeliefBase
     {
         UltimoChequeoPedestal = Time.time;
         DebeComprobarPedestal = false;
+        DebeComprobarPedestalPrioritario = false;
     }
 
 
@@ -338,17 +345,34 @@ public class BeliefBase
     public TacticalPhase FaseActual()
     {
         if (AnilloRobado)
-            return TieneInfoReciente(8f)
+            return TieneInfoReciente(TIEMPO_INFO_TACTICA_LADRON)
                 ? TacticalPhase.RingStolenThiefKnown
                 : TacticalPhase.RingStolenThiefLost;
 
-        if (TieneInfoReciente(8f))
+        if (TieneInfoReciente(TIEMPO_INFO_TACTICA_LADRON))
             return TacticalPhase.RingSafeThiefKnown;
 
-        if (TieneInfoReciente(25f))
+        if (TieneInfoReciente(TIEMPO_INVESTIGACION_LADRON))
             return TacticalPhase.RingSafeThiefLost;
 
         return TacticalPhase.NormalPatrol;
+    }
+
+    public void DescartarHipotesisLadronCaducada()
+    {
+        LadronVisible = false;
+        UltimaDeteccionDirecta = false;
+        FuenteUltimaDeteccion = "";
+        TiempoUltimaDeteccion = -100f;
+        UltimaDireccionLadron = Vector3.zero;
+        TieneDireccionLadron = false;
+        BuscarLocalAntesDeCoordinar = false;
+        ComprobarPedestalTrasBusquedaLocal = false;
+        DebeBuscarAlrededorPedestal = false;
+        DebeComprobarPedestalPrioritario = false;
+        LimpiarTarea();
+        LimpiarRequest();
+        NecesitaDeliberar = true;
     }
 
     public Vector3 ObjetivoCriticoActual()
@@ -369,11 +393,17 @@ public class BeliefBase
 
     public int CarrilInterceptacion()
     {
-        int hash = 0;
-        foreach (char c in MiId)
-            hash += c;
+        List<string> guardiasActivos = EstadosOtrosGuardias
+            .Where(par => par.Value.CurrentState == BehaviorType.Intercept.ToString() ||
+                          par.Value.CurrentState == BehaviorType.Pursuit.ToString())
+            .Select(par => par.Key)
+            .ToList();
 
-        int modulo = Mathf.Abs(hash) % 3;
+        guardiasActivos.Add(MiId);
+        guardiasActivos = guardiasActivos.Distinct().ToList();
+        guardiasActivos.Sort(StringComparer.Ordinal);
+
+        int modulo = guardiasActivos.IndexOf(MiId) % 3;
         if (modulo == 0) return -1;
         if (modulo == 1) return 0;
         return 1;
@@ -604,7 +634,11 @@ public class BeliefBase
         {
             if (par.Value.CurrentPosition == null) continue;
             float suDistancia = Vector3.Distance(par.Value.CurrentPosition.ToVector3(), posicion);
-            if (suDistancia < miDistancia)
+            bool estaMasCerca = suDistancia < miDistancia - 0.25f;
+            bool empataConMejorId = Mathf.Abs(suDistancia - miDistancia) <= 0.25f &&
+                                    string.Compare(par.Key, MiId, StringComparison.Ordinal) < 0;
+
+            if (estaMasCerca || empataConMejorId)
                 return false;
         }
         return true;

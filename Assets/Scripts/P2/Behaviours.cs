@@ -54,15 +54,27 @@ public class PatrolBehavior : IBehavior
 [System.Serializable]
 public class PursuitBehavior : IBehavior
 {
+    private Vector3 ultimoDestino;
+    private bool tieneDestino;
+    private const float UMBRAL_RECALCULO_DESTINO_SQR = 0.36f;
+
     public void Iniciar(BeliefBase creencias, ActuadorMovimiento actuador)
     {
-        actuador.SetDestino(creencias.UltimaPosicionLadron, TipoVelocidad.Persecucion);
+        ultimoDestino = creencias.UltimaPosicionLadron;
+        tieneDestino = true;
+        actuador.SetDestino(ultimoDestino, TipoVelocidad.Persecucion);
     }
 
     public bool Ejecutar(BeliefBase creencias, ActuadorMovimiento actuador)
     {
-        // Actualizar destino continuamente con la última posición conocida
-        actuador.SetDestino(creencias.UltimaPosicionLadron, TipoVelocidad.Persecucion);
+        Vector3 nuevoDestino = creencias.UltimaPosicionLadron;
+        if (!tieneDestino ||
+            (nuevoDestino - ultimoDestino).sqrMagnitude > UMBRAL_RECALCULO_DESTINO_SQR)
+        {
+            ultimoDestino = nuevoDestino;
+            tieneDestino = true;
+            actuador.SetDestino(ultimoDestino, TipoVelocidad.Persecucion);
+        }
 
         // Terminamos si llegamos al destino y no lo vemos
         if (!creencias.LadronVisible && actuador.HaLlegado(1.5f))
@@ -94,6 +106,8 @@ public class SearchBehavior : IBehavior
     private float tiempoInicio;
     private float tiempoAtascado = 0f;
     private Vector3 posicionAnterior;
+    private Vector3 centroBusquedaActual;
+    private const float UMBRAL_RECENTRAR_BUSQUEDA_SQR = 16f;
 
     public SearchBehavior(float radio = 12f, int puntos = 4, float duracion = 10f)
     {
@@ -108,6 +122,11 @@ public class SearchBehavior : IBehavior
         indicePunto = 0;
         tiempoAtascado = 0f;
         posicionAnterior = actuador.transform.position;
+        GenerarPuntosBusqueda(creencias, actuador);
+    }
+
+    private void GenerarPuntosBusqueda(BeliefBase creencias, ActuadorMovimiento actuador)
+    {
 
         // Sesgar la búsqueda hacia delante si conocemos la dirección de huida.
         Vector3 centro = creencias.UltimaPosicionLadron;
@@ -124,7 +143,9 @@ public class SearchBehavior : IBehavior
             centro += creencias.UltimaDireccionLadron * (radioBusqueda * 0.5f);
         }
 
+        centroBusquedaActual = centro;
         puntosBusqueda = new Vector3[maxPuntos];
+        indicePunto = 0;
         for (int i = 0; i < maxPuntos; i++)
         {
             puntosBusqueda[i] = actuador.GenerarPuntoAleatorio(centro, radioActual);
@@ -139,6 +160,17 @@ public class SearchBehavior : IBehavior
         if (puntosBusqueda == null || puntosBusqueda.Length == 0) return true;
 
         // Tiempo máximo alcanzado
+        Vector3 centroDeseado = creencias.UltimaPosicionLadron;
+        if (creencias.TieneDireccionLadron)
+            centroDeseado += creencias.UltimaDireccionLadron * (radioBusqueda * 0.5f);
+
+        if ((centroDeseado - centroBusquedaActual).sqrMagnitude > UMBRAL_RECENTRAR_BUSQUEDA_SQR)
+        {
+            GenerarPuntosBusqueda(creencias, actuador);
+            posicionAnterior = actuador.transform.position;
+            tiempoAtascado = 0f;
+        }
+
         if (Time.time - tiempoInicio > duracionMaxima)
             return true;
 
@@ -208,7 +240,16 @@ public class InterceptBehavior : IBehavior
         if (!creencias.TieneInfoReciente(ventanaInfo))
             return true;
 
-        if (Time.time - ultimoRecalculo >= intervaloRecalculo || actuador.HaLlegado(1.2f))
+        bool haLlegado = actuador.HaLlegado(1.2f);
+        if (haLlegado &&
+            !creencias.LadronVisible &&
+            creencias.AntiguedadInfoLadron >= BeliefBase.TIEMPO_GRACIA_PERDIDA_LADRON)
+        {
+            creencias.BuscarLocalAntesDeCoordinar = true;
+            return true;
+        }
+
+        if (Time.time - ultimoRecalculo >= intervaloRecalculo || haLlegado)
             ActualizarDestino(creencias, actuador);
 
         return false;
@@ -245,8 +286,9 @@ public class BlockExitBehavior : IBehavior
 
     public void Iniciar(BeliefBase creencias, ActuadorMovimiento actuador)
     {
-        if (puntosBloqueo != null && puntosBloqueo.Length > 0)
+        if (TienePuntosBloqueoValidos())
         {
+            indiceBloqueo = BuscarSiguientePuntoValido(indiceBloqueo);
             actuador.SetDestino(puntosBloqueo[indiceBloqueo].position, TipoVelocidad.Alerta);
         }
         else if (puntoSalida != null)
@@ -257,11 +299,11 @@ public class BlockExitBehavior : IBehavior
 
     public bool Ejecutar(BeliefBase creencias, ActuadorMovimiento actuador)
     {
-        if (puntosBloqueo != null && puntosBloqueo.Length > 0)
+        if (TienePuntosBloqueoValidos())
         {
             if (actuador.HaLlegado(0.5f))
             {
-                indiceBloqueo = (indiceBloqueo + 1) % puntosBloqueo.Length;
+                indiceBloqueo = BuscarSiguientePuntoValido(indiceBloqueo + 1);
                 actuador.SetDestino(puntosBloqueo[indiceBloqueo].position, TipoVelocidad.Alerta);
             }
         }
@@ -271,6 +313,32 @@ public class BlockExitBehavior : IBehavior
         }
 
         return false; // Nunca termina por sí solo
+    }
+
+    private bool TienePuntosBloqueoValidos()
+    {
+        if (puntosBloqueo == null || puntosBloqueo.Length == 0)
+            return false;
+
+        for (int i = 0; i < puntosBloqueo.Length; i++)
+        {
+            if (puntosBloqueo[i] != null)
+                return true;
+        }
+
+        return false;
+    }
+
+    private int BuscarSiguientePuntoValido(int inicio)
+    {
+        for (int offset = 0; offset < puntosBloqueo.Length; offset++)
+        {
+            int indice = (inicio + offset) % puntosBloqueo.Length;
+            if (puntosBloqueo[indice] != null)
+                return indice;
+        }
+
+        return 0;
     }
 
     public void Detener(ActuadorMovimiento actuador) { }
@@ -309,6 +377,7 @@ public class SearchAssignedBehavior : IBehavior
 {
     private Vector3[] puntosBusqueda;
     private int indicePunto = 0;
+    private const int PUNTOS_FALLBACK = 4;
 
     public void Iniciar(BeliefBase creencias, ActuadorMovimiento actuador)
     {
@@ -328,9 +397,16 @@ public class SearchAssignedBehavior : IBehavior
         }
         else
         {
-            puntosBusqueda = new Vector3[0];
-            Debug.LogWarning($"[SearchAssigned] Zona no valida o sin puntos: '{tarea.ZoneId}'");
-            return;
+            Vector3 centro = tarea.TargetArea != null
+                ? tarea.TargetArea.ToVector3()
+                : creencias.UltimaPosicionLadron;
+            float radio = Mathf.Max(tarea.Radius, 8f);
+
+            puntosBusqueda = new Vector3[PUNTOS_FALLBACK];
+            for (int i = 0; i < puntosBusqueda.Length; i++)
+                puntosBusqueda[i] = actuador.GenerarPuntoAleatorio(centro, radio);
+
+            Debug.LogWarning($"[SearchAssigned] Zona '{tarea.ZoneId}' sin puntos locales; usando fallback alrededor de {centro}");
         }
 
         if (puntosBusqueda.Length > 0)

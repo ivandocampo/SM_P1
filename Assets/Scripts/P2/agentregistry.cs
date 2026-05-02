@@ -27,6 +27,14 @@ public class AgentRegistry : MonoBehaviour
     
     public void Registrar(string agentId, string tipo, ComunicacionAgente comunicacion)
     {
+        if (agentesRegistrados.TryGetValue(agentId, out ComunicacionAgente existente) &&
+            existente != null &&
+            existente != comunicacion)
+        {
+            Debug.LogWarning($"[Registry] ID duplicado '{agentId}'. Se mantiene el agente ya registrado.");
+            return;
+        }
+
         agentesRegistrados[agentId] = comunicacion;
         tiposAgente[agentId] = tipo;
         Debug.Log($"[Registry] Agente registrado: {agentId} (tipo: {tipo})");
@@ -43,6 +51,9 @@ public class AgentRegistry : MonoBehaviour
     public ComunicacionAgente ObtenerAgente(string agentId)
     {
         agentesRegistrados.TryGetValue(agentId, out ComunicacionAgente agente);
+        if (agente == null && agentesRegistrados.ContainsKey(agentId))
+            Desregistrar(agentId);
+
         return agente;
     }
 

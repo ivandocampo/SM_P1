@@ -83,9 +83,10 @@ public class GuardAgent : MonoBehaviour
     private const float INTERVALO_DELIBERACION = 0.5f;
     private bool busquedaCoordinadaPendiente = false;
     private float tiempoPerdidaLadron = -100f;
-    private const float RETARDO_BUSQUEDA_COORDINADA = 5f;
+    private const float RETARDO_BUSQUEDA_COORDINADA = BeliefBase.TIEMPO_INFO_TACTICA_LADRON;
     private static float ultimaRondaBusquedaCoordinada = -100f;
     private static Vector3 ultimaPosicionRondaBusqueda = Vector3.positiveInfinity;
+    private static string responsableBusquedaCoordinada = "";
     private const float DISTANCIA_MISMA_RONDA_BUSQUEDA = 2f;
     private static GUIStyle estiloDebugPanel;
     private static GUIStyle estiloDebugTitulo;
@@ -156,15 +157,19 @@ public class GuardAgent : MonoBehaviour
         // Comunicación
         onCFP = msg => protocolHandler.ManejarCFP(msg, actuador);
 
-        comunicacion.OnInformRecibido       += protocolHandler.ManejarInform;
-        comunicacion.OnRequestRecibido      += protocolHandler.ManejarRequest;
-        comunicacion.OnQueryRecibido        += protocolHandler.ManejarQuery;
-        comunicacion.OnCFPRecibido          += onCFP;
-        comunicacion.OnPropuestaAceptada    += protocolHandler.ManejarPropuestaAceptada;
-        comunicacion.OnPropuestaRechazada   += protocolHandler.ManejarPropuestaRechazada;
-        comunicacion.OnDoneRecibido         += protocolHandler.ManejarDone;
-        comunicacion.OnAgreeRecibido        += protocolHandler.ManejarAgree;
-        comunicacion.OnRefuseRecibido       += protocolHandler.ManejarRefuse;
+        comunicacion.OnInformRecibido        += protocolHandler.ManejarInform;
+        comunicacion.OnInformResultRecibido  += protocolHandler.ManejarInformResult;
+        comunicacion.OnRequestRecibido       += protocolHandler.ManejarRequest;
+        comunicacion.OnQueryIfRecibido       += protocolHandler.ManejarQueryIf;
+        comunicacion.OnQueryRefRecibido      += protocolHandler.ManejarQueryRef;
+        comunicacion.OnCFPRecibido           += onCFP;
+        comunicacion.OnPropuestaAceptada     += protocolHandler.ManejarPropuestaAceptada;
+        comunicacion.OnPropuestaRechazada    += protocolHandler.ManejarPropuestaRechazada;
+        comunicacion.OnDoneRecibido          += protocolHandler.ManejarDone;
+        comunicacion.OnAgreeRecibido         += protocolHandler.ManejarAgree;
+        comunicacion.OnRefuseRecibido        += protocolHandler.ManejarRefuse;
+        comunicacion.OnCancelRecibido        += protocolHandler.ManejarCancel;
+        comunicacion.OnNotUnderstoodRecibido += protocolHandler.ManejarNotUnderstood;
 
         Debug.Log($"[{agentId}] Guardia inicializado con arquitectura BDI + FIPA-ACL");
     }
@@ -185,15 +190,19 @@ public class GuardAgent : MonoBehaviour
 
         if (comunicacion != null)
         {
-            comunicacion.OnInformRecibido     -= protocolHandler.ManejarInform;
-            comunicacion.OnRequestRecibido    -= protocolHandler.ManejarRequest;
-            comunicacion.OnQueryRecibido      -= protocolHandler.ManejarQuery;
-            comunicacion.OnCFPRecibido        -= onCFP;
-            comunicacion.OnPropuestaAceptada  -= protocolHandler.ManejarPropuestaAceptada;
-            comunicacion.OnPropuestaRechazada -= protocolHandler.ManejarPropuestaRechazada;
-            comunicacion.OnDoneRecibido       -= protocolHandler.ManejarDone;
-            comunicacion.OnAgreeRecibido      -= protocolHandler.ManejarAgree;
-            comunicacion.OnRefuseRecibido     -= protocolHandler.ManejarRefuse;
+            comunicacion.OnInformRecibido        -= protocolHandler.ManejarInform;
+            comunicacion.OnInformResultRecibido  -= protocolHandler.ManejarInformResult;
+            comunicacion.OnRequestRecibido       -= protocolHandler.ManejarRequest;
+            comunicacion.OnQueryIfRecibido       -= protocolHandler.ManejarQueryIf;
+            comunicacion.OnQueryRefRecibido      -= protocolHandler.ManejarQueryRef;
+            comunicacion.OnCFPRecibido           -= onCFP;
+            comunicacion.OnPropuestaAceptada     -= protocolHandler.ManejarPropuestaAceptada;
+            comunicacion.OnPropuestaRechazada    -= protocolHandler.ManejarPropuestaRechazada;
+            comunicacion.OnDoneRecibido          -= protocolHandler.ManejarDone;
+            comunicacion.OnAgreeRecibido         -= protocolHandler.ManejarAgree;
+            comunicacion.OnRefuseRecibido        -= protocolHandler.ManejarRefuse;
+            comunicacion.OnCancelRecibido        -= protocolHandler.ManejarCancel;
+            comunicacion.OnNotUnderstoodRecibido -= protocolHandler.ManejarNotUnderstood;
         }
 
         contractNetManager?.Limpiar();
@@ -218,6 +227,7 @@ public class GuardAgent : MonoBehaviour
         // Percepción y comunicación: cada frame para reaccionar sin latencia
         comunicacion.ProcesarMensajes();
         GestionarComunicacionReactiva();
+        GestionarCaducidadHipotesisLadron();
 
         // Mantenimiento periódico
         ActualizarTemporizadorComprobacion();
@@ -406,6 +416,7 @@ public class GuardAgent : MonoBehaviour
         busquedaCoordinadaPendiente = false;
         creencias.BuscarLocalAntesDeCoordinar = false;
         creencias.ComprobarPedestalTrasBusquedaLocal = false;
+        creencias.DebeComprobarPedestalPrioritario = false;
         deliberacionPendiente = true; // Pursuit(100) puede entrar en juego
         ComprobarSiLlevaAnillo();
     }
@@ -418,6 +429,7 @@ public class GuardAgent : MonoBehaviour
         busquedaCoordinadaPendiente = false;
         creencias.BuscarLocalAntesDeCoordinar = false;
         creencias.ComprobarPedestalTrasBusquedaLocal = false;
+        creencias.DebeComprobarPedestalPrioritario = false;
         ComprobarSiLlevaAnillo();
         // No fuerza deliberación: ya estamos en Pursuit, solo actualizamos posición
     }
@@ -427,9 +439,10 @@ public class GuardAgent : MonoBehaviour
         creencias.MarcarLadronPerdido();
         creencias.PendienteComunicarLadronPerdido = true;
         busquedaCoordinadaPendiente = true;
-        creencias.BuscarLocalAntesDeCoordinar = true;
+        creencias.BuscarLocalAntesDeCoordinar = false;
         creencias.ComprobarPedestalTrasBusquedaLocal = !creencias.AnilloRobado;
         tiempoPerdidaLadron = Time.time;
+        ReclamarResponsabilidadBusquedaCoordinada();
         deliberacionPendiente = true; // Pursuit desaparece, Search/BlockExit entran
     }
 
@@ -438,6 +451,7 @@ public class GuardAgent : MonoBehaviour
         creencias.MarcarAnilloRobado(); // activa NecesitaDeliberar internamente
         creencias.DebeBuscarAlrededorPedestal = false;
         creencias.DebeComprobarPedestal = false;
+        creencias.DebeComprobarPedestalPrioritario = false;
         creencias.PendienteComunicarAnilloDesaparecido = true;
         Debug.Log($"[{agentId}] Anillo robado detectado");
     }
@@ -488,12 +502,53 @@ public class GuardAgent : MonoBehaviour
             creencias.PendienteComunicarLadronPerdido = false;
         }
 
+        TacticalPhase fase = creencias.FaseActual();
+        bool faseContactoTactico = fase == TacticalPhase.RingSafeThiefKnown ||
+                                   fase == TacticalPhase.RingStolenThiefKnown;
         if (busquedaCoordinadaPendiente &&
-            Time.time - tiempoPerdidaLadron >= RETARDO_BUSQUEDA_COORDINADA &&
-            creencias.AntiguedadInfoLadron >= RETARDO_BUSQUEDA_COORDINADA)
+            faseContactoTactico &&
+            !creencias.BuscarLocalAntesDeCoordinar &&
+            Time.time - tiempoPerdidaLadron >= BeliefBase.TIEMPO_GRACIA_PERDIDA_LADRON)
         {
+            creencias.BuscarLocalAntesDeCoordinar = true;
+            creencias.NecesitaDeliberar = true;
+        }
+
+        if (busquedaCoordinadaPendiente &&
+            (fase == TacticalPhase.RingSafeThiefLost ||
+             fase == TacticalPhase.RingStolenThiefLost))
+        {
+            creencias.BuscarLocalAntesDeCoordinar = false;
+
             if (PuedeIniciarRondaBusquedaCoordinada())
-                contractNetManager.IniciarDistribucionBusqueda();
+            {
+                bool contratoLanzado = contractNetManager.IniciarDistribucionBusqueda();
+                if (contratoLanzado)
+                {
+                    ultimaRondaBusquedaCoordinada = Time.time;
+                    ultimaPosicionRondaBusqueda = creencias.UltimaPosicionLadron;
+
+                    if (!creencias.AnilloRobado)
+                    {
+                        responsableBusquedaCoordinada = "";
+                        creencias.DebeComprobarPedestalPrioritario = true;
+                        creencias.ComprobarPedestalTrasBusquedaLocal = false;
+                        selectorIntenciones.ForzarReset();
+                        deliberacionPendiente = true;
+                    }
+                }
+                else if (!contratoLanzado)
+                {
+                    responsableBusquedaCoordinada = "";
+                    busquedaCoordinadaPendiente = true;
+                    tiempoPerdidaLadron = Time.time - BeliefBase.TIEMPO_INFO_TACTICA_LADRON;
+                    return;
+                }
+            }
+            else
+            {
+                creencias.ComprobarPedestalTrasBusquedaLocal = false;
+            }
 
             busquedaCoordinadaPendiente = false;
         }
@@ -511,6 +566,27 @@ public class GuardAgent : MonoBehaviour
             protocolHandler.InformarPredicado(PredicateType.RING_STOLEN, "seen-carrying-ring");
             creencias.PendienteComunicarLadronConAnillo = false;
         }
+    }
+
+    private void ReclamarResponsabilidadBusquedaCoordinada()
+    {
+        if (creencias.AnilloRobado) return;
+
+        busquedaCoordinadaPendiente = true;
+        tiempoPerdidaLadron = Time.time;
+    }
+
+    private void GestionarCaducidadHipotesisLadron()
+    {
+        if (creencias.AnilloRobado) return;
+        if (creencias.TiempoUltimaDeteccion < -50f) return;
+        if (creencias.FaseActual() != TacticalPhase.NormalPatrol) return;
+
+        busquedaCoordinadaPendiente = false;
+        creencias.DescartarHipotesisLadronCaducada();
+        selectorIntenciones.ForzarReset();
+        deliberacionPendiente = true;
+        Debug.Log($"[{agentId}] Hipotesis del ladron caducada; vuelta a patrulla");
     }
 
     private void InformarAvistamientoSiProcede()
@@ -583,8 +659,18 @@ public class GuardAgent : MonoBehaviour
         if (terminado)
         {
             Debug.Log($"[{agentId}] Behavior '{behaviorActivo_tipo}' completado");
+            BehaviorType behaviorTerminado = behaviorActivo_tipo;
 
-            if (behaviorActivo_tipo == BehaviorType.SearchAssigned && creencias.TieneTareaAsignada)
+            if ((behaviorTerminado == BehaviorType.Pursuit ||
+                 behaviorTerminado == BehaviorType.Intercept) &&
+                !creencias.LadronVisible &&
+                !creencias.AnilloRobado &&
+                creencias.FaseActual() == TacticalPhase.RingSafeThiefKnown)
+            {
+                ReclamarResponsabilidadBusquedaCoordinada();
+            }
+
+            if (behaviorTerminado == BehaviorType.SearchAssigned && creencias.TieneTareaAsignada)
             {
                 creencias.RegistrarBusquedaCompletada(creencias.TareaAsignada.ZoneId);
 
@@ -603,7 +689,7 @@ public class GuardAgent : MonoBehaviour
                 creencias.LimpiarRequest();
             }
 
-            if (behaviorActivo_tipo == BehaviorType.CheckPedestal)
+            if (behaviorTerminado == BehaviorType.CheckPedestal)
             {
                 creencias.RegistrarChequeoPedestal();
                 creencias.ComprobarPedestalTrasBusquedaLocal = false;
@@ -613,7 +699,7 @@ public class GuardAgent : MonoBehaviour
 
             // Tras una búsqueda libre (Search), si quedan zonas sin cubrir por el resto
             // del equipo, auto-asignarse la mejor candidata para mantenerse útil.
-            if (behaviorActivo_tipo == BehaviorType.Search)
+            if (behaviorTerminado == BehaviorType.Search)
             {
                 creencias.BuscarLocalAntesDeCoordinar = false;
                 IntentarAutoAsignacionDeZona();
@@ -636,8 +722,15 @@ public class GuardAgent : MonoBehaviour
     // INFORM_DONE asociado al terminar.
     private void IntentarAutoAsignacionDeZona()
     {
+        if (!creencias.AnilloRobado &&
+            creencias.FaseActual() == TacticalPhase.RingSafeThiefLost)
+            return;
+
         if (creencias.ComprobarPedestalTrasBusquedaLocal)
         {
+            if (creencias.FaseActual() == TacticalPhase.RingSafeThiefKnown)
+                creencias.BuscarLocalAntesDeCoordinar = true;
+
             creencias.NecesitaDeliberar = true;
             return;
         }
@@ -672,14 +765,22 @@ public class GuardAgent : MonoBehaviour
         if (!SoyResponsableDeBusquedaCoordinada())
             return false;
 
-        ultimaRondaBusquedaCoordinada = Time.time;
-        ultimaPosicionRondaBusqueda = creencias.UltimaPosicionLadron;
         return true;
     }
 
     private bool SoyResponsableDeBusquedaCoordinada()
     {
+        if (string.IsNullOrEmpty(responsableBusquedaCoordinada))
+            responsableBusquedaCoordinada = CalcularResponsableBusquedaCoordinada();
+
+        return responsableBusquedaCoordinada == agentId;
+    }
+
+    private string CalcularResponsableBusquedaCoordinada()
+    {
+        string mejorId = agentId;
         float miDistancia = Vector3.Distance(transform.position, creencias.UltimaPosicionLadron);
+        float mejorDistancia = miDistancia;
 
         foreach (var par in AgentRegistry.Instance.ObtenerIdsPorTipo("guard"))
         {
@@ -693,15 +794,19 @@ public class GuardAgent : MonoBehaviour
                 continue;
 
             float suDistancia = Vector3.Distance(otroGuardia.transform.position, creencias.UltimaPosicionLadron);
-            if (suDistancia < miDistancia - 0.25f)
-                return false;
+            bool estaMasCerca = suDistancia < mejorDistancia - 0.25f;
+            bool empataConMejorId = Mathf.Abs(suDistancia - mejorDistancia) <= 0.25f &&
+                                    string.Compare(otroGuardia.agentId, mejorId, System.StringComparison.Ordinal) < 0;
 
-            if (Mathf.Abs(suDistancia - miDistancia) <= 0.25f &&
-                string.Compare(otroGuardia.agentId, agentId, System.StringComparison.Ordinal) < 0)
-                return false;
+            if (estaMasCerca || empataConMejorId)
+            {
+                mejorId = otroGuardia.agentId;
+                mejorDistancia = suDistancia;
+            }
         }
 
-        return true;
+        Debug.Log($"[{agentId}] Responsable CN fase anillo elegido: {mejorId}");
+        return mejorId;
     }
 
     // TEMPORIZADOR PEDESTAL

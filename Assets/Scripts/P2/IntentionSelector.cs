@@ -2,30 +2,19 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-
 public class IntentionSelector
 {
-    /// <summary>Intención actualmente activa.</summary>
     public Desire IntencionActual { get; private set; } = null;
 
     public BehaviorType NombreIntencion => IntencionActual?.Nombre ?? BehaviorType.None;
 
-    /// <summary>Si se ha producido un cambio de intención en la última selección.</summary>
     public bool CambioDeIntencion { get; private set; } = false;
 
-    [Header("Configuración")]
-    /// <summary>
-    /// Diferencia mínima de prioridad para cambiar de intención.
-    /// Evita oscilaciones entre deseos de prioridad similar.
-    /// </summary>
+    [Header("Configuracion")]
     private float umbralCambio = 15f;
-
-    /// <summary>Tiempo mínimo antes de poder reconsiderar la intención.</summary>
     private float tiempoMinReconsideracion = 1.5f;
 
     private float tiempoUltimoCambio = 0f;
-    
-    /// <summary>Cooldown adicional después de cambiar de behavior para evitar oscilación rápida.</summary>
     private float cooldownPostCambio = 2.0f;
     private float tiempoUltimoBehaviorChange = 0f;
 
@@ -35,7 +24,6 @@ public class IntentionSelector
         tiempoMinReconsideracion = tiempoMin;
     }
 
-    
     public void Seleccionar(List<Desire> deseos, BeliefBase creencias)
     {
         CambioDeIntencion = false;
@@ -50,35 +38,25 @@ public class IntentionSelector
             return;
         }
 
-        // Verificar cooldown post-cambio para evitar oscilación
-        if (IntencionActual != null &&
-            Time.time - tiempoUltimoBehaviorChange < cooldownPostCambio)
-        {
-            // Excepción: persecución directa siempre se acepta inmediatamente
-            Desire candidato = deseos[0];
-            if (candidato.Nombre == BehaviorType.Pursuit && candidato.Prioridad >= 100f
-                && IntencionActual?.Nombre != BehaviorType.Pursuit)
-            {
-                // Permitir cambio solo para persecución de alta prioridad
-            }
-            else
-            {
-                return; // En cooldown, mantener intención actual
-            }
-        }
-
-        // Ordenar deseos por prioridad descendente
         deseos.Sort((a, b) => b.Prioridad.CompareTo(a.Prioridad));
         Desire mejorDeseo = deseos[0];
+        bool persecucionDirectaNueva =
+            mejorDeseo.Nombre == BehaviorType.Pursuit &&
+            IntencionActual?.Nombre != BehaviorType.Pursuit;
 
-        // === CASO 1: No hay intención actual → adoptar la mejor ===
+        if (IntencionActual != null &&
+            Time.time - tiempoUltimoBehaviorChange < cooldownPostCambio &&
+            !persecucionDirectaNueva)
+        {
+            return;
+        }
+
         if (IntencionActual == null)
         {
             CambiarIntencion(mejorDeseo);
             return;
         }
 
-        // === CASO 2: La intención actual ya no está entre los deseos posibles ===
         bool intencionSigueValida = deseos.Any(d => d.Nombre == IntencionActual.Nombre);
         if (!intencionSigueValida)
         {
@@ -86,20 +64,17 @@ public class IntentionSelector
             return;
         }
 
-        // === CASO 3: Reconsideración periódica ===
-        if (Time.time - tiempoUltimoCambio < tiempoMinReconsideracion)
+        // Ver al ladron debe romper intercept/search/pedestal aunque la prioridad
+        // numerica no supere el umbral anti-oscilacion.
+        if (persecucionDirectaNueva)
         {
-            // Excepción: persecución directa siempre se acepta inmediatamente
-            if (mejorDeseo.Nombre == BehaviorType.Pursuit && mejorDeseo.Prioridad >= 100f
-                && IntencionActual.Nombre != BehaviorType.Pursuit)
-            {
-                CambiarIntencion(mejorDeseo);
-            }
+            CambiarIntencion(mejorDeseo);
             return;
         }
 
-        // === CASO 4: Hay un deseo significativamente mejor ===
-        // Buscar la prioridad actual del deseo que coincide con la intención
+        if (Time.time - tiempoUltimoCambio < tiempoMinReconsideracion)
+            return;
+
         float prioridadActual = deseos
             .Where(d => d.Nombre == IntencionActual.Nombre)
             .Max(d => d.Prioridad);
@@ -110,8 +85,6 @@ public class IntentionSelector
             return;
         }
 
-        // === CASO 5: Mantener intención actual, pero actualizar datos ===
-        // (ej: posición del ladrón puede haber cambiado)
         Desire actualizado = deseos.FirstOrDefault(d => d.Nombre == IntencionActual.Nombre);
         if (actualizado != null)
         {
@@ -120,7 +93,6 @@ public class IntentionSelector
         }
     }
 
-    
     public void ForzarReset()
     {
         IntencionActual = null;
@@ -128,7 +100,6 @@ public class IntentionSelector
         tiempoUltimoCambio = 0f;
     }
 
-    
     public bool EstaDisponible()
     {
         return IntencionActual == null
@@ -142,9 +113,9 @@ public class IntentionSelector
         IntencionActual = nuevaIntencion;
         CambioDeIntencion = true;
         tiempoUltimoCambio = Time.time;
-        tiempoUltimoBehaviorChange = Time.time; // Registrar cambio de behavior
+        tiempoUltimoBehaviorChange = Time.time;
 
-        Debug.Log($"[BDI] Intención cambiada: {anterior} → {nuevaIntencion.Nombre} " +
+        Debug.Log($"[BDI] Intencion cambiada: {anterior} -> {nuevaIntencion.Nombre} " +
                   $"(prioridad: {nuevaIntencion.Prioridad:F0})");
     }
 }

@@ -45,24 +45,24 @@ public class ContractNetManager
     // entre los guardias disponibles. Solo lo lanza el guardia más cercano al
     // ladrón (con tiebreaker lexicográfico por ID), evitando rondas simultáneas
     // sin coordinador central.
-    public void IniciarDistribucionBusqueda()
+    public bool IniciarDistribucionBusqueda()
     {
-        float cooldownEfectivo = creencias.AnilloRobado ? 3f : cooldown;
-        if (Time.time - ultimoContractNet < cooldownEfectivo) return;
-        if (contratosActivos.Count > 0) return;
+        float cooldownEfectivo = creencias.AnilloRobado ? 3f : 0f;
+        if (Time.time - ultimoContractNet < cooldownEfectivo) return false;
+        if (contratosActivos.Count > 0) return false;
 
         List<string> participantes = AgentRegistry.Instance
             .ObtenerIdsPorTipo("guard");
         if (!creencias.AnilloRobado)
             participantes.Remove(agentId);
 
-        if (participantes.Count == 0) return;
+        if (participantes.Count == 0) return false;
 
         List<string> zonas = SeleccionarZonasParaContratar(participantes.Count);
         if (zonas.Count == 0)
         {
-            Debug.LogWarning($"[{agentId}] Contract Net sin zonas registradas");
-            return;
+            Debug.LogWarning($"[{agentId}] Contract Net sin zonas candidatas para la fase actual");
+            return false;
         }
 
         ultimoContractNet = Time.time;
@@ -72,7 +72,8 @@ public class ContractNetManager
             AbrirContratoParaZona(zoneId, participantes);
         }
 
-        Debug.Log($"[{agentId}] Contract Net iniciado: {zonas.Count} zonas, {participantes.Count} guardias");
+        Debug.Log($"[{agentId}] Contract Net iniciado: zonas=[{string.Join(", ", zonas)}], participantes=[{string.Join(", ", participantes)}]");
+        return true;
     }
 
     // Evalúa los contratos abiertos cuando todos están listos y hace el matching
@@ -95,6 +96,10 @@ public class ContractNetManager
             {
                 AdjudicarZona(ganador, contrato.ContenidoTarea);
                 guardiasYaAsignados.Add(ganador.Sender);
+            }
+            else
+            {
+                Debug.LogWarning($"[{agentId}] Contract Net sin ganador para tarea {contrato.ContenidoTarea}");
             }
 
             RechazarPerdedores(contrato.Propuestas, ganador);
@@ -134,24 +139,11 @@ public class ContractNetManager
             var ringZones = zonasDisponibles
                 .Where(EsZonaAnillo)
                 .ToList();
-            if (ringZones.Count > 0)
-            {
-                candidatas = ringZones;
-                if (creencias.TienePosicionPedestal)
-                    referencia = creencias.PosicionPedestal;
-            }
-            else
-            {
-                var nonExitZones = zonasDisponibles
-                    .Where(z => !EsZonaSalida(z))
-                    .ToList();
-                if (nonExitZones.Count > 0)
-                {
-                    candidatas = nonExitZones;
-                    if (creencias.TienePosicionPedestal)
-                        referencia = creencias.PosicionPedestal;
-                }
-            }
+
+            if (creencias.TienePosicionPedestal)
+                referencia = creencias.PosicionPedestal;
+
+            candidatas = ringZones;
         }
 
         // Orden primario: zona más antigua sin barrer (rotación natural).
@@ -174,9 +166,7 @@ public class ContractNetManager
     {
         if (string.IsNullOrEmpty(zoneId)) return false;
 
-        return zoneId.StartsWith("Ring_", System.StringComparison.OrdinalIgnoreCase) ||
-               zoneId.StartsWith("Anillo_", System.StringComparison.OrdinalIgnoreCase) ||
-               zoneId.StartsWith("Pedestal_", System.StringComparison.OrdinalIgnoreCase);
+        return zoneId.StartsWith("Anillo_", System.StringComparison.OrdinalIgnoreCase);
     }
 
     // APERTURA DE CONTRATO Y ENVÍO DE CFP

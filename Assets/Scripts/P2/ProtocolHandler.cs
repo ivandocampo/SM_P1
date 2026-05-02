@@ -48,6 +48,13 @@ public class ProtocolHandler
         comunicacion.Enviar(reply);
     }
 
+    public void ResponderNotUnderstood(ACLMessage original, string motivo = "content-not-understood")
+    {
+        ACLMessage reply = original.CreateReply(ACLPerformative.NOT_UNDERSTOOD);
+        reply.Content = motivo;
+        comunicacion.Enviar(reply);
+    }
+
     public void NotificarDone(string convId, string solicitante)
     {
         ACLMessage done = new ACLMessage(ACLPerformative.INFORM_DONE, agentId, solicitante);
@@ -94,6 +101,10 @@ public class ProtocolHandler
                     avistamiento.Direction != null ? avistamiento.Direction.ToVector3() : Vector3.zero,
                     avistamiento.Direction != null
                 );
+                creencias.BuscarLocalAntesDeCoordinar = false;
+                creencias.ComprobarPedestalTrasBusquedaLocal = false;
+                creencias.DebeComprobarPedestalPrioritario = false;
+                creencias.NecesitaDeliberar = true;
                 if (LogsDetallados)
                     Debug.Log($"[{agentId}] Avistamiento recibido de {msg.Sender} en {avistamiento.Location}");
             }
@@ -132,11 +143,25 @@ public class ProtocolHandler
     {
         if (!ContentLanguage.IsActionRequest(msg.Content))
         {
-            ResponderRefuse(msg, "content-not-understood");
+            ResponderNotUnderstood(msg, "content-not-understood");
+            return;
+        }
+
+        if (creencias.EstadoActual == BehaviorType.Pursuit)
+        {
+            ResponderRefuse(msg, "in-pursuit");
             return;
         }
 
         ActionRequest solicitud = ContentLanguage.DecodeActionRequest(msg.Content);
+        if (solicitud == null ||
+            string.IsNullOrEmpty(solicitud.Action) ||
+            !System.Enum.IsDefined(typeof(ActionType), solicitud.Action))
+        {
+            ResponderNotUnderstood(msg, "invalid-action");
+            return;
+        }
+
         bool puedoAceptar = selectorIntenciones.EstaDisponible() || solicitud.Urgency > 0.8f;
 
         if (puedoAceptar)
@@ -162,6 +187,40 @@ public class ProtocolHandler
             IsAvailable = selectorIntenciones.EstaDisponible()
         };
         ResponderQuery(msg, ContentLanguage.Encode(estado));
+    }
+
+    public void ManejarQueryIf(ACLMessage msg)
+    {
+        if (ContentLanguage.IsPredicate(msg.Content))
+        {
+            PredicateInfo info = ContentLanguage.DecodePredicate(msg.Content);
+            if (info == null || string.IsNullOrEmpty(info.Predicate))
+            {
+                ResponderNotUnderstood(msg, "invalid-predicate");
+                return;
+            }
+
+            bool resultado = EvaluarPredicado(info.Predicate);
+            ResponderQuery(msg, resultado ? "true" : "false");
+            return;
+        }
+
+        ManejarQuery(msg);
+    }
+
+    public void ManejarQueryRef(ACLMessage msg)
+    {
+        ManejarQuery(msg);
+    }
+
+    public void ManejarInformResult(ACLMessage msg)
+    {
+        if (ContentLanguage.IsGuardStatus(msg.Content))
+        {
+            GuardStatus estado = ContentLanguage.DecodeGuardStatus(msg.Content);
+            if (estado != null && estado.GuardId != agentId)
+                creencias.ActualizarEstadoGuardia(estado);
+        }
     }
 
     public void ManejarCFP(ACLMessage msg, ActuadorMovimiento actuador)
@@ -202,7 +261,7 @@ public class ProtocolHandler
         {
             SearchTask tarea = ContentLanguage.DecodeSearchTask(msg.Content);
             creencias.AsignarTarea(tarea, msg.ConversationId, msg.Sender);
-            Debug.Log($"[{agentId}] Tarea adjudicada de {msg.Sender}");
+            Debug.Log($"[{agentId}] Tarea adjudicada de {msg.Sender}: zona={tarea.ZoneId}");
         }
     }
 
@@ -229,5 +288,52 @@ public class ProtocolHandler
     {
         creencias.ActualizarDisponibilidadGuardia(msg.Sender, false);
         Debug.Log($"[{agentId}] {msg.Sender} rechazo nuestra solicitud: {msg.Content}");
+    }
+
+    public void ManejarCancel(ACLMessage msg)
+    {
+        bool cancelado = false;
+
+        if (!string.IsNullOrEmpty(msg.ConversationId) &&
+            msg.ConversationId == creencias.ConversacionRequest)
+        {
+            creencias.LimpiarRequest();
+            cancelado = true;
+        }
+
+        if (!string.IsNullOrEmpty(msg.ConversationId) &&
+            msg.ConversationId == creencias.ConversacionTareaAsignada)
+        {
+            creencias.LimpiarTarea();
+            cancelado = true;
+        }
+
+        if (cancelado)
+        {
+            creencias.NecesitaDeliberar = true;
+            ResponderAgree(msg);
+        }
+        else
+        {
+            ResponderRefuse(msg, "unknown-conversation");
+        }
+    }
+
+    public void ManejarNotUnderstood(ACLMessage msg)
+    {
+        if (LogsDetallados)
+            Debug.Log($"[{agentId}] NOT_UNDERSTOOD de {msg.Sender}: {msg.Content}");
+    }
+
+    private bool EvaluarPredicado(string predicado)
+    {
+        if (predicado == PredicateType.RING_STOLEN.ToString())
+            return creencias.AnilloRobado;
+        if (predicado == PredicateType.RING_ON_PEDESTAL.ToString())
+            return !creencias.AnilloRobado;
+        if (predicado == PredicateType.THIEF_SPOTTED.ToString())
+            return creencias.TieneInfoReciente();
+
+        return false;
     }
 }

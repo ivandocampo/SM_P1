@@ -23,19 +23,33 @@ public class ComunicacionAgente : MonoBehaviour
 
     // Eventos: el cerebro del agente se suscribe a estos.
     public event Action<ACLMessage> OnInformRecibido;
+    public event Action<ACLMessage> OnInformResultRecibido;
     public event Action<ACLMessage> OnRequestRecibido;
     public event Action<ACLMessage> OnAgreeRecibido;
     public event Action<ACLMessage> OnRefuseRecibido;
     public event Action<ACLMessage> OnDoneRecibido;
     public event Action<ACLMessage> OnFailureRecibido;
     public event Action<ACLMessage> OnQueryRecibido;
+    public event Action<ACLMessage> OnQueryIfRecibido;
+    public event Action<ACLMessage> OnQueryRefRecibido;
     public event Action<ACLMessage> OnCFPRecibido;
     public event Action<ACLMessage> OnPropuestaRecibida;
     public event Action<ACLMessage> OnPropuestaAceptada;
     public event Action<ACLMessage> OnPropuestaRechazada;
+    public event Action<ACLMessage> OnCancelRecibido;
+    public event Action<ACLMessage> OnNotUnderstoodRecibido;
 
     public void Inicializar(string id, string tipo)
     {
+        if (!string.IsNullOrEmpty(AgentId))
+        {
+            if (AgentId == id && TipoAgente == tipo)
+                return;
+
+            Debug.LogWarning($"[{AgentId}] ComunicacionAgente ya inicializado; ignorando reinicializacion como {id}.");
+            return;
+        }
+
         AgentId = id;
         TipoAgente = tipo;
         AgentRegistry.Instance?.Registrar(AgentId, TipoAgente, this);
@@ -52,8 +66,9 @@ public class ComunicacionAgente : MonoBehaviour
     {
         if (buzonEntrada.Count >= maxBuzonSize)
         {
-            Debug.LogWarning($"[{AgentId}] Buzon lleno ({maxBuzonSize}). Descartando mensaje antiguo.");
-            buzonEntrada.Dequeue();
+            ACLMessage descartado = buzonEntrada.Dequeue();
+            Debug.LogWarning(
+                $"[{AgentId}] Buzon lleno ({maxBuzonSize}). Descartando {descartado.Performative} de {descartado.Sender}.");
         }
 
         buzonEntrada.Enqueue(mensaje);
@@ -121,17 +136,22 @@ public class ComunicacionAgente : MonoBehaviour
         {
             case ACLPerformative.INFORM:          OnInformRecibido?.Invoke(msg);     break;
             case ACLPerformative.INFORM_DONE:     OnDoneRecibido?.Invoke(msg);       break;
-            case ACLPerformative.INFORM_RESULT:   OnInformRecibido?.Invoke(msg);     break;
+            case ACLPerformative.INFORM_RESULT:   OnInformResultRecibido?.Invoke(msg); break;
             case ACLPerformative.REQUEST:         OnRequestRecibido?.Invoke(msg);    break;
             case ACLPerformative.AGREE:           OnAgreeRecibido?.Invoke(msg);      break;
             case ACLPerformative.REFUSE:          OnRefuseRecibido?.Invoke(msg);     break;
             case ACLPerformative.FAILURE:         OnFailureRecibido?.Invoke(msg);    break;
-            case ACLPerformative.QUERY_IF:
-            case ACLPerformative.QUERY_REF:       OnQueryRecibido?.Invoke(msg);      break;
+            case ACLPerformative.QUERY_IF:        OnQueryIfRecibido?.Invoke(msg); OnQueryRecibido?.Invoke(msg); break;
+            case ACLPerformative.QUERY_REF:       OnQueryRefRecibido?.Invoke(msg); OnQueryRecibido?.Invoke(msg); break;
             case ACLPerformative.CFP:             OnCFPRecibido?.Invoke(msg);        break;
             case ACLPerformative.PROPOSE:         OnPropuestaRecibida?.Invoke(msg);  break;
             case ACLPerformative.ACCEPT_PROPOSAL: OnPropuestaAceptada?.Invoke(msg);  break;
             case ACLPerformative.REJECT_PROPOSAL: OnPropuestaRechazada?.Invoke(msg); break;
+            case ACLPerformative.CANCEL:          OnCancelRecibido?.Invoke(msg);     break;
+            case ACLPerformative.NOT_UNDERSTOOD:  OnNotUnderstoodRecibido?.Invoke(msg); break;
+            default:
+                Debug.LogWarning($"[{AgentId}] Performativa no manejada: {msg.Performative} de {msg.Sender}");
+                break;
         }
     }
 
@@ -140,7 +160,15 @@ public class ComunicacionAgente : MonoBehaviour
     {
         mensaje.Sender = AgentId;
         RegistrarEnConversacionSiAplica(mensaje);
-        AgentRegistry.Instance?.ObtenerAgente(mensaje.Receiver)?.RecibirMensaje(mensaje);
+        ComunicacionAgente receptor = AgentRegistry.Instance?.ObtenerAgente(mensaje.Receiver);
+        if (receptor == null)
+        {
+            AgentRegistry.Instance?.Desregistrar(mensaje.Receiver);
+            Debug.LogWarning($"[{AgentId}] No se pudo enviar {mensaje.Performative}: receptor {mensaje.Receiver} no registrado.");
+            return;
+        }
+
+        receptor.RecibirMensaje(mensaje);
     }
 
     public void EnviarATodos(ACLMessage plantilla, List<string> receptores)

@@ -7,8 +7,8 @@ public class ActuadorMovimiento : MonoBehaviour
 {
     [Header("Velocidades")]
     public float velocidadPatrulla = 3.5f;
-    public float velocidadAlerta = 6.0f;
-    public float velocidadPersecucion = 8f;
+    public float velocidadAlerta = 7.0f;
+    public float velocidadPersecucion = 9.0f;
 
     private NavMeshAgent agent;
 
