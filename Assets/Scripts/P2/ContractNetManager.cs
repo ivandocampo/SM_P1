@@ -86,7 +86,7 @@ public class ContractNetManager
 
         // Fase 5: los dos bloqueadores preservan la salida; el iniciador solo
         // participa si no es uno de ellos.
-        HashSet<string> bloqueadoresSalida = creencias.ObtenerIdsBloqueadoresSalida(2);
+        HashSet<string> bloqueadoresSalida = creencias.ObtenerIdsBloqueadoresSalidaEstables(2);
         participantes.RemoveAll(id => bloqueadoresSalida.Contains(id));
         return participantes;
     }

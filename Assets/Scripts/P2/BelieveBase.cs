@@ -378,6 +378,55 @@ public class BeliefBase
             .FirstOrDefault();
     }
 
+    public string ObtenerSiguienteZonaExitSecuencial(string zonaActual)
+    {
+        List<string> zonasExit = ObtenerZonasExitOrdenadas();
+        if (zonasExit.Count == 0)
+            return "";
+
+        if (!string.IsNullOrEmpty(zonaActual))
+        {
+            int indiceActual = zonasExit.FindIndex(z =>
+                string.Equals(z, zonaActual, StringComparison.OrdinalIgnoreCase));
+
+            if (indiceActual >= 0)
+                return zonasExit[(indiceActual + 1) % zonasExit.Count];
+        }
+
+        return ObtenerZonaExitPorRol();
+    }
+
+    private string ObtenerZonaExitPorRol()
+    {
+        List<string> zonasExit = ObtenerZonasExitOrdenadas();
+        if (zonasExit.Count == 0)
+            return "";
+
+        HashSet<string> bloqueadores = ObtenerIdsBloqueadoresSalidaEstables(2);
+        List<string> buscadores = EstadosOtrosGuardias.Keys
+            .Append(MiId)
+            .Where(id => !bloqueadores.Contains(id))
+            .Distinct()
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .ToList();
+
+        int indice = buscadores.IndexOf(MiId);
+        if (indice < 0)
+            indice = 0;
+
+        return zonasExit[indice % zonasExit.Count];
+    }
+
+    private List<string> ObtenerZonasExitOrdenadas()
+    {
+        return ObtenerIdsZonasBusqueda()
+            .Where(z => !string.IsNullOrEmpty(z) &&
+                        z.StartsWith("Exit_", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(ExtraerNumeroZona)
+            .ThenBy(z => z, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     private int ExtraerNumeroZona(string zoneId)
     {
         int numero = 0;
@@ -757,6 +806,66 @@ public class BeliefBase
         }
 
         return new HashSet<string>(ObtenerIdsMasCercanosA(PosicionSalida, maxAgentes, excluir));
+    }
+
+    public HashSet<string> ObtenerIdsBloqueadoresSalidaEstables(int maxAgentes, bool excluirmeSiTengoContactoDirecto = false)
+    {
+        if (!TienePosicionSalida)
+            return new HashSet<string>();
+
+        HashSet<string> excluir = new HashSet<string>();
+        if (excluirmeSiTengoContactoDirecto)
+            excluir.Add(MiId);
+
+        foreach (var par in EstadosOtrosGuardias)
+        {
+            if (par.Value.CurrentState == BehaviorType.Pursuit.ToString())
+                excluir.Add(par.Key);
+        }
+
+        if (EstadoActual == BehaviorType.Pursuit)
+            excluir.Add(MiId);
+
+        List<string> actuales = new List<string>();
+        if (EstadoActual == BehaviorType.BlockExit && !excluir.Contains(MiId))
+            actuales.Add(MiId);
+
+        foreach (var par in EstadosOtrosGuardias)
+        {
+            if (excluir.Contains(par.Key)) continue;
+            if (par.Value.CurrentState == BehaviorType.BlockExit.ToString())
+                actuales.Add(par.Key);
+        }
+
+        actuales = actuales
+            .Distinct()
+            .OrderBy(id => DistanciaGuardiaASalida(id))
+            .ThenBy(id => id, StringComparer.Ordinal)
+            .Take(maxAgentes)
+            .ToList();
+
+        if (actuales.Count >= maxAgentes)
+            return new HashSet<string>(actuales);
+
+        HashSet<string> excluirRelleno = new HashSet<string>(excluir);
+        foreach (string id in actuales)
+            excluirRelleno.Add(id);
+
+        List<string> relleno = ObtenerIdsMasCercanosA(PosicionSalida, maxAgentes - actuales.Count, excluirRelleno);
+        actuales.AddRange(relleno);
+        return new HashSet<string>(actuales);
+    }
+
+    private float DistanciaGuardiaASalida(string guardId)
+    {
+        if (guardId == MiId)
+            return Vector3.Distance(MiPosicion, PosicionSalida);
+
+        if (EstadosOtrosGuardias.TryGetValue(guardId, out GuardStatus estado) &&
+            estado.CurrentPosition != null)
+            return Vector3.Distance(estado.CurrentPosition.ToVector3(), PosicionSalida);
+
+        return float.MaxValue;
     }
 
     public bool SoyEntreMasCercanosParaBloquearSalida(int maxAgentes, bool excluirmeSiTengoContactoDirecto)

@@ -233,6 +233,7 @@ public class GuardAgent : MonoBehaviour
         GestionarComunicacionReactiva();
         GestionarCaducidadHipotesisLadron();
         GestionarCoberturaSalidaRobada();
+        GestionarAutoAsignacionSalidaRobada();
 
         // Mantenimiento periódico
         ActualizarTemporizadorComprobacion();
@@ -646,7 +647,7 @@ public class GuardAgent : MonoBehaviour
             return;
 
         if (behaviorActivo_tipo == BehaviorType.BlockExit ||
-            !creencias.SoyEntreMasCercanosParaBloquearSalida(2, false))
+            !creencias.ObtenerIdsBloqueadoresSalidaEstables(2).Contains(agentId))
             return;
 
         selectorIntenciones.ForzarReset();
@@ -654,6 +655,25 @@ public class GuardAgent : MonoBehaviour
         deliberacionPendiente = true;
         tiempoInicioCoberturaSalidaInsuficiente = Time.time;
         Debug.Log($"[{agentId}] Cobertura de salida insuficiente; forzando relevo a BlockExit");
+    }
+
+    private void GestionarAutoAsignacionSalidaRobada()
+    {
+        if (!creencias.AnilloRobado ||
+            creencias.FaseActual() != TacticalPhase.RingStolenThiefLost ||
+            creencias.TieneTareaAsignada)
+            return;
+
+        if (behaviorActivo_tipo == BehaviorType.BlockExit ||
+            behaviorActivo_tipo == BehaviorType.SearchAssigned ||
+            behaviorActivo_tipo == BehaviorType.Pursuit ||
+            behaviorActivo_tipo == BehaviorType.Intercept)
+            return;
+
+        if (creencias.ObtenerIdsBloqueadoresSalidaEstables(2).Contains(agentId))
+            return;
+
+        IntentarAutoAsignacionDeZona();
     }
 
     private void InformarAvistamientoSiProcede()
@@ -742,7 +762,8 @@ public class GuardAgent : MonoBehaviour
 
             if (behaviorTerminado == BehaviorType.SearchAssigned && creencias.TieneTareaAsignada)
             {
-                creencias.RegistrarBusquedaCompletada(creencias.TareaAsignada.ZoneId);
+                string zonaCompletada = creencias.TareaAsignada.ZoneId;
+                creencias.RegistrarBusquedaCompletada(zonaCompletada);
 
                 // Si la tarea vino de un Contract-Net, notificar al iniciador.
                 // Las tareas auto-asignadas no tienen asignador y no requieren INFORM_DONE.
@@ -753,9 +774,9 @@ public class GuardAgent : MonoBehaviour
                 creencias.LimpiarTarea();
 
                 if (creencias.AnilloRobado &&
-                    !creencias.SoyEntreMasCercanosParaBloquearSalida(2, false))
+                    !creencias.ObtenerIdsBloqueadoresSalidaEstables(2).Contains(agentId))
                 {
-                    IntentarAutoAsignacionDeZona();
+                    IntentarAutoAsignacionDeZona(zonaCompletada);
                 }
             }
 
@@ -796,10 +817,10 @@ public class GuardAgent : MonoBehaviour
     // difundido en el heartbeat) y se auto-asigna una. Es self-assignment local
     // basado en información compartida, no Contract-Net — no hay iniciador ni
     // INFORM_DONE asociado al terminar.
-    private void IntentarAutoAsignacionDeZona()
+    private void IntentarAutoAsignacionDeZona(string zonaAnterior = "")
     {
         if (creencias.AnilloRobado &&
-            creencias.SoyEntreMasCercanosParaBloquearSalida(2, false))
+            creencias.ObtenerIdsBloqueadoresSalidaEstables(2).Contains(agentId))
             return;
 
         if (!creencias.AnilloRobado &&
@@ -816,7 +837,7 @@ public class GuardAgent : MonoBehaviour
         }
 
         string zonaLibre = creencias.AnilloRobado
-            ? creencias.ObtenerSiguienteZonaExitPorRotacion()
+            ? creencias.ObtenerSiguienteZonaExitSecuencial(zonaAnterior)
             : creencias.ObtenerZonaSinCubrir(soloExit: false);
         if (string.IsNullOrEmpty(zonaLibre)) return;
 

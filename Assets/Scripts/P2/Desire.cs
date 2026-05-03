@@ -414,25 +414,14 @@ public class DesireGenerator
             return;
         }
 
-        // En Fase 3 (RingSafeThiefLost) la busqueda activa esta cubierta por
-        // el Contract Net (SearchAssigned). Quien no tenga zona asignada cae a
-        // Patrol(10) hasta que la fase expire a NormalPatrol. Solo en Fase 5
-        // (RingStolenThiefLost) generamos Search libre para mantener a todo el
-        // equipo activo.
-        if (fase != TacticalPhase.RingStolenThiefLost)
+        // En las fases de busqueda coordinada, la busqueda activa esta cubierta
+        // por SearchAssigned. En Fase 5 no generamos Search libre porque rompe
+        // el reparto 2 BlockExit + 3 zonas Exit_ durante pequenos huecos de
+        // autoasignacion.
+        if (creencias.AnilloRobado)
             return;
 
-        const int MAX_BUSCADORES = 5;
-        bool soyBuscadorActual = creencias.EstadoActual == BehaviorType.Search;
-        if (!soyBuscadorActual &&
-            creencias.GuardiasBuscando() >= MAX_BUSCADORES)
-            return;
-
-        deseos.Add(new Desire(
-            BehaviorType.Search,
-            PrioridadPorCercania(70f, creencias.UltimaPosicionLadron, 0.1f),
-            creencias.UltimaPosicionLadron
-        ));
+        return;
     }
 
     private void AgregarBloqueoSalidaSiProcede(List<Desire> deseos, TacticalPhase fase)
@@ -444,12 +433,21 @@ public class DesireGenerator
 
         bool contactoDirectoPropio = creencias.LadronVisible && creencias.TieneDeteccionPropiaReciente();
         bool soyBloqueadorActual = creencias.EstadoActual == BehaviorType.BlockExit;
+        bool soyBloqueadorElegido = creencias.ObtenerIdsBloqueadoresSalidaEstables(
+            politica.MaxBloqueadoresSalida,
+            contactoDirectoPropio
+        ).Contains(creencias.MiId);
+        bool hayExcesoBloqueadores = creencias.GuardiasEnEstado(BehaviorType.BlockExit) >
+                                     politica.MaxBloqueadoresSalida;
 
         // Sticky: si ya estoy bloqueando, mantengo BlockExit aunque me haya alejado
-        // de la salida visitando puntos de bloqueo. Solo Pursuit (con visual propio)
-        // puede sacarme de aqui.
+        // de la salida visitando puntos de bloqueo. Si hay mas de dos bloqueadores,
+        // solo se quedan los dos candidatos reales.
+        if (soyBloqueadorActual && hayExcesoBloqueadores && !soyBloqueadorElegido)
+            return;
+
         if (!soyBloqueadorActual &&
-            !creencias.SoyEntreMasCercanosParaBloquearSalida(politica.MaxBloqueadoresSalida, contactoDirectoPropio))
+            !soyBloqueadorElegido)
             return;
 
         float prioridadBloqueo = politica.PrioridadBloqueoSalida;
@@ -461,7 +459,7 @@ public class DesireGenerator
 
     private bool SoyCandidatoTacticoAnilloRobado(Vector3 referencia, int maxAgentes)
     {
-        HashSet<string> bloqueadores = creencias.ObtenerIdsBloqueadoresSalida(MAX_BLOQUEADORES_SALIDA);
+        HashSet<string> bloqueadores = creencias.ObtenerIdsBloqueadoresSalidaEstables(MAX_BLOQUEADORES_SALIDA);
 
         if (creencias.LadronVisible && creencias.TieneDeteccionPropiaReciente())
             bloqueadores.Remove(creencias.MiId);
@@ -479,6 +477,13 @@ public class DesireGenerator
 
         if (creencias.TienePosicionSalida)
         {
+            bool coberturaInsuficiente = creencias.GuardiasEnEstado(BehaviorType.BlockExit) < MAX_BLOQUEADORES_SALIDA;
+            bool soyCandidato = creencias.ObtenerIdsBloqueadoresSalidaEstables(MAX_BLOQUEADORES_SALIDA)
+                .Contains(creencias.MiId);
+
+            if (!coberturaInsuficiente || !soyCandidato)
+                return;
+
             deseos.Add(new Desire(
                 BehaviorType.BlockExit,
                 30f,
