@@ -36,13 +36,7 @@ public class SearchBehavior : IBehavior
         Vector3 centro = creencias.UltimaPosicionLadron;
         float radioActual = radioBusqueda;
 
-        if (creencias.DebeBuscarAlrededorPedestal && creencias.TienePosicionPedestal)
-        {
-            centro = creencias.PosicionPedestal;
-            radioActual = radioBusqueda * 0.5f;
-            creencias.DebeBuscarAlrededorPedestal = false;
-        }
-        else if (creencias.TieneDireccionLadron)
+        if (creencias.TieneDireccionLadron)
         {
             centro += creencias.UltimaDireccionLadron * (radioBusqueda * 0.5f);
         }

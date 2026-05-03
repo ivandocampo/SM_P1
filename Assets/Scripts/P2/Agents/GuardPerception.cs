@@ -64,9 +64,6 @@ public partial class GuardAgent
     private void OnSonidoDetectado(Vector3 posicion)
     {
         creencias.ActualizarPosicionLadron(posicion, Time.time, false, agentId);
-
-        if (Vector3.Distance(transform.position, posicion) <= TacticalConfig.CloseOwnDetectionDistance)
-            deliberacionPendiente = true;
     }
 
     private void ComprobarSiLlevaAnillo()

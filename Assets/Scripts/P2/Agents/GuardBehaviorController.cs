@@ -122,8 +122,6 @@ public partial class GuardAgent
             {
                 creencias.RegistrarChequeoPedestal();
                 creencias.ComprobarPedestalTrasBusquedaLocal = false;
-                if (!creencias.AnilloRobado && creencias.TieneInfoReciente(12f))
-                    creencias.DebeBuscarAlrededorPedestal = true;
             }
 
             // Tras una busqueda libre (Search), si quedan zonas sin cubrir por el resto
