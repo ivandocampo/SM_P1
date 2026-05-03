@@ -26,7 +26,7 @@ public class ProtocolHandler
     {
         ACLMessage msg = new ACLMessage(ACLPerformative.INFORM, agentId, "");
         msg.Content = ContentLanguage.Encode(avistamiento);
-        msg.Protocol = "fipa-inform";
+        msg.Protocol = GameConstants.Protocols.Inform;
         comunicacion.Broadcast(msg);
     }
 
@@ -34,21 +34,21 @@ public class ProtocolHandler
     {
         ACLMessage msg = new ACLMessage(ACLPerformative.INFORM, agentId, "");
         msg.Content = ContentLanguage.EncodePredicate(predicado, extraData);
-        msg.Protocol = "fipa-inform";
+        msg.Protocol = GameConstants.Protocols.Inform;
         comunicacion.Broadcast(msg);
     }
 
     public void ResponderAgree(ACLMessage original)
         => comunicacion.Enviar(original.CreateReply(ACLPerformative.AGREE));
 
-    public void ResponderRefuse(ACLMessage original, string motivo = "busy")
+    public void ResponderRefuse(ACLMessage original, string motivo = GameConstants.RefusalReasons.Busy)
     {
         ACLMessage reply = original.CreateReply(ACLPerformative.REFUSE);
         reply.Content = motivo;
         comunicacion.Enviar(reply);
     }
 
-    public void ResponderNotUnderstood(ACLMessage original, string motivo = "content-not-understood")
+    public void ResponderNotUnderstood(ACLMessage original, string motivo = GameConstants.RefusalReasons.ContentNotUnderstood)
     {
         ACLMessage reply = original.CreateReply(ACLPerformative.NOT_UNDERSTOOD);
         reply.Content = motivo;
@@ -59,7 +59,7 @@ public class ProtocolHandler
     {
         ACLMessage done = new ACLMessage(ACLPerformative.INFORM_DONE, agentId, solicitante);
         done.ConversationId = convId;
-        done.Protocol = "fipa-request";
+        done.Protocol = GameConstants.Protocols.Request;
         comunicacion.Enviar(done);
     }
 
@@ -77,7 +77,7 @@ public class ProtocolHandler
         comunicacion.Enviar(propose);
     }
 
-    public void RechazarCFP(ACLMessage cfp, string motivo = "unavailable")
+    public void RechazarCFP(ACLMessage cfp, string motivo = GameConstants.RefusalReasons.Unavailable)
     {
         ACLMessage refuse = cfp.CreateReply(ACLPerformative.REFUSE);
         refuse.Content = motivo;
@@ -151,13 +151,13 @@ public class ProtocolHandler
     {
         if (!ContentLanguage.IsActionRequest(msg.Content))
         {
-            ResponderNotUnderstood(msg, "content-not-understood");
+            ResponderNotUnderstood(msg, GameConstants.RefusalReasons.ContentNotUnderstood);
             return;
         }
 
         if (creencias.EstadoActual == BehaviorType.Pursuit)
         {
-            ResponderRefuse(msg, "in-pursuit");
+            ResponderRefuse(msg, GameConstants.RefusalReasons.InPursuit);
             return;
         }
 
@@ -166,7 +166,7 @@ public class ProtocolHandler
             string.IsNullOrEmpty(solicitud.Action) ||
             !System.Enum.IsDefined(typeof(ActionType), solicitud.Action))
         {
-            ResponderNotUnderstood(msg, "invalid-action");
+            ResponderNotUnderstood(msg, GameConstants.RefusalReasons.InvalidAction);
             return;
         }
 
@@ -180,7 +180,7 @@ public class ProtocolHandler
         }
         else
         {
-            ResponderRefuse(msg, "busy");
+            ResponderRefuse(msg, GameConstants.RefusalReasons.Busy);
             Debug.Log($"[{agentId}] REQUEST rechazado de {msg.Sender}");
         }
     }
@@ -204,7 +204,7 @@ public class ProtocolHandler
             PredicateInfo info = ContentLanguage.DecodePredicate(msg.Content);
             if (info == null || string.IsNullOrEmpty(info.Predicate))
             {
-                ResponderNotUnderstood(msg, "invalid-predicate");
+                ResponderNotUnderstood(msg, GameConstants.RefusalReasons.InvalidPredicate);
                 return;
             }
 
@@ -236,20 +236,20 @@ public class ProtocolHandler
         if (creencias.DebeComprobarPedestalPrioritario ||
             creencias.EstadoActual == BehaviorType.CheckPedestal)
         {
-            RechazarCFP(msg, "checking-pedestal");
+            RechazarCFP(msg, GameConstants.RefusalReasons.CheckingPedestal);
             return;
         }
 
         if (creencias.EstadoActual == BehaviorType.Pursuit && creencias.LadronVisible)
         {
-            RechazarCFP(msg, "in-pursuit");
+            RechazarCFP(msg, GameConstants.RefusalReasons.InPursuit);
             return;
         }
 
         SearchTask tarea = ContentLanguage.DecodeSearchTask(msg.Content);
         if (tarea == null)
         {
-            RechazarCFP(msg, "invalid-task");
+            RechazarCFP(msg, GameConstants.RefusalReasons.InvalidTask);
             return;
         }
 
@@ -330,7 +330,7 @@ public class ProtocolHandler
         }
         else
         {
-            ResponderRefuse(msg, "unknown-conversation");
+            ResponderRefuse(msg, GameConstants.RefusalReasons.UnknownConversation);
         }
     }
 

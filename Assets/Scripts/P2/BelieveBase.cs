@@ -15,9 +15,9 @@ public enum TacticalPhase
 [System.Serializable]
 public class BeliefBase
 {
-    public const float TIEMPO_INFO_TACTICA_LADRON = 8f;
-    public const float TIEMPO_INVESTIGACION_LADRON = 25f;
-    public const float TIEMPO_GRACIA_PERDIDA_LADRON = 1.5f;
+    public const float TIEMPO_INFO_TACTICA_LADRON = TacticalConfig.ThiefInfoRecentSeconds;
+    public const float TIEMPO_INVESTIGACION_LADRON = TacticalConfig.ThiefInvestigationSeconds;
+    public const float TIEMPO_GRACIA_PERDIDA_LADRON = TacticalConfig.LostGraceSeconds;
 
     // CREENCIAS SOBRE EL LADRÓN
 
@@ -336,7 +336,7 @@ public class BeliefBase
         if (soloExit)
         {
             var exit = candidatas
-                .Where(z => z.StartsWith("Exit_", StringComparison.OrdinalIgnoreCase))
+                .Where(z => z.StartsWith(GameConstants.ZonePrefixes.Exit, StringComparison.OrdinalIgnoreCase))
                 .ToList();
             if (exit.Count > 0) candidatas = exit;
         }
@@ -344,40 +344,6 @@ public class BeliefBase
         return candidatas
             .OrderBy(z => ObtenerTiempoUltimaBusqueda(z))
             .ThenBy(z => Vector3.Distance(ObtenerCentroZona(z), MiPosicion))
-            .FirstOrDefault();
-    }
-
-    public string ObtenerSiguienteZonaExitPorRotacion(int maxPorZona = 2)
-    {
-        Dictionary<string, int> ocupacion = new Dictionary<string, int>();
-        foreach (var par in EstadosOtrosGuardias)
-        {
-            string zona = par.Value.CurrentZone;
-            if (string.IsNullOrEmpty(zona)) continue;
-            ocupacion.TryGetValue(zona, out int n);
-            ocupacion[zona] = n + 1;
-        }
-
-        var candidatas = ObtenerIdsZonasBusqueda()
-            .Where(z => !string.IsNullOrEmpty(z) &&
-                        z.StartsWith("Exit_", StringComparison.OrdinalIgnoreCase))
-            .Where(z => (ocupacion.TryGetValue(z, out int n) ? n : 0) < maxPorZona)
-            .ToList();
-
-        // Si no quedan zonas con hueco (caso degenerado, e.g. estados aun no
-        // propagados), relajamos el filtro para no devolver vacio.
-        if (candidatas.Count == 0)
-        {
-            candidatas = ObtenerIdsZonasBusqueda()
-                .Where(z => !string.IsNullOrEmpty(z) &&
-                            z.StartsWith("Exit_", StringComparison.OrdinalIgnoreCase))
-                .ToList();
-        }
-
-        return candidatas
-            .OrderBy(z => ObtenerTiempoUltimaBusqueda(z))
-            .ThenBy(ExtraerNumeroZona)
-            .ThenBy(z => z, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
     }
 
@@ -424,7 +390,7 @@ public class BeliefBase
     {
         return ObtenerIdsZonasBusqueda()
             .Where(z => !string.IsNullOrEmpty(z) &&
-                        z.StartsWith("Exit_", StringComparison.OrdinalIgnoreCase))
+                        z.StartsWith(GameConstants.ZonePrefixes.Exit, StringComparison.OrdinalIgnoreCase))
             .OrderBy(ExtraerNumeroZona)
             .ThenBy(z => z, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -678,28 +644,6 @@ public class BeliefBase
     }
 
 
-    public bool AlguienBloqueandoSalida()
-    {
-        foreach (var par in EstadosOtrosGuardias)
-        {
-            if (par.Value.CurrentState == BehaviorType.BlockExit.ToString())
-                return true;
-        }
-        return false;
-    }
-
-    public int GuardiasBloqueando()
-    {
-        int count = 0;
-        foreach (var par in EstadosOtrosGuardias)
-        {
-            if (par.Value.CurrentState == BehaviorType.BlockExit.ToString())
-                count++;
-        }
-        return count;
-    }
-
-
     public bool AlguienGuardandoPedestal()
     {
         foreach (var par in EstadosOtrosGuardias)
@@ -713,19 +657,6 @@ public class BeliefBase
         return false;
     }
 
-
-    public int GuardiasBuscando()
-    {
-        int count = 0;
-        foreach (var par in EstadosOtrosGuardias)
-        {
-            string estado = par.Value.CurrentState;
-            if (estado == BehaviorType.Search.ToString() ||
-                estado == BehaviorType.SearchAssigned.ToString())
-                count++;
-        }
-        return count;
-    }
 
     /// <summary>
     /// Devuelve true si ningún otro guardia conocido está más cerca de la posición dada.
@@ -791,24 +722,6 @@ public class BeliefBase
             .Take(maxAgentes)
             .Select(c => c.Key)
             .ToList();
-    }
-
-    public HashSet<string> ObtenerIdsBloqueadoresSalida(int maxAgentes)
-    {
-        if (!TienePosicionSalida)
-            return new HashSet<string>();
-
-        HashSet<string> excluir = new HashSet<string>();
-        if (EstadoActual == BehaviorType.Pursuit)
-            excluir.Add(MiId);
-
-        foreach (var par in EstadosOtrosGuardias)
-        {
-            if (par.Value.CurrentState == BehaviorType.Pursuit.ToString())
-                excluir.Add(par.Key);
-        }
-
-        return new HashSet<string>(ObtenerIdsMasCercanosA(PosicionSalida, maxAgentes, excluir));
     }
 
     public HashSet<string> ObtenerIdsBloqueadoresSalidaEstables(int maxAgentes, bool excluirmeSiTengoContactoDirecto = false)

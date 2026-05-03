@@ -28,7 +28,7 @@ public class SpiderAgent : MonoBehaviour
             Debug.LogError($"[{agentId}] Falta componente ComunicacionAgente");
             return;
         }
-        comunicacion.Inicializar(agentId, "spider");
+        comunicacion.Inicializar(agentId, GameConstants.AgentTypes.Spider);
 
         // Obtener sensores (puede tener uno o ambos)
         sensorVision = GetComponent<SensorVision>();
@@ -127,7 +127,7 @@ public class SpiderAgent : MonoBehaviour
 
         ACLMessage msg = new ACLMessage(ACLPerformative.INFORM, agentId, "");
         msg.Content  = ContentLanguage.Encode(avistamiento);
-        msg.Protocol = "fipa-inform";
+        msg.Protocol = GameConstants.Protocols.Inform;
         comunicacion.Broadcast(msg);
 
         if (visionDirecta &&
@@ -148,7 +148,7 @@ public class SpiderAgent : MonoBehaviour
     {
         ACLMessage msg = new ACLMessage(ACLPerformative.INFORM, agentId, "");
         msg.Content  = ContentLanguage.EncodePredicate(predicado);
-        msg.Protocol = "fipa-inform";
+        msg.Protocol = GameConstants.Protocols.Inform;
         comunicacion.Broadcast(msg);
     }
 }

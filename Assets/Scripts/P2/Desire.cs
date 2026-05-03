@@ -32,9 +32,9 @@ public class Desire
 public class DesireGenerator
 {
     private BeliefBase creencias;
-    private const int MAX_TACTICOS_ANILLO_SEGURO = 4;
-    private const int MAX_TACTICOS_ANILLO_ROBADO = 3;
-    private const int MAX_BLOQUEADORES_SALIDA = 2;
+    private const int MAX_TACTICOS_ANILLO_SEGURO = TacticalConfig.MaxTacticalRingSafe;
+    private const int MAX_TACTICOS_ANILLO_ROBADO = TacticalConfig.MaxTacticalRingStolen;
+    private const int MAX_BLOQUEADORES_SALIDA = TacticalConfig.MaxExitBlockers;
 
     private struct PhasePolicy
     {
@@ -130,7 +130,7 @@ public class DesireGenerator
                 return new PhasePolicy
                 {
                     MaxTacticos = MAX_TACTICOS_ANILLO_SEGURO,
-                    MaxInterceptoresTrasPerdida = 2,
+                    MaxInterceptoresTrasPerdida = TacticalConfig.MaxInterceptorsAfterLoss,
                     MaxBloqueadoresSalida = 0,
                     PrioridadIntercept = 92f,
                     PrioridadBloqueoSalida = 0f
@@ -139,7 +139,7 @@ public class DesireGenerator
                 return new PhasePolicy
                 {
                     MaxTacticos = MAX_TACTICOS_ANILLO_SEGURO,
-                    MaxInterceptoresTrasPerdida = 2,
+                    MaxInterceptoresTrasPerdida = TacticalConfig.MaxInterceptorsAfterLoss,
                     MaxBloqueadoresSalida = 0,
                     PrioridadIntercept = 74f,
                     PrioridadBloqueoSalida = 0f
@@ -148,7 +148,7 @@ public class DesireGenerator
                 return new PhasePolicy
                 {
                     MaxTacticos = MAX_TACTICOS_ANILLO_ROBADO,
-                    MaxInterceptoresTrasPerdida = 2,
+                    MaxInterceptoresTrasPerdida = TacticalConfig.MaxInterceptorsAfterLoss,
                     MaxBloqueadoresSalida = MAX_BLOQUEADORES_SALIDA,
                     PrioridadIntercept = 90f,
                     PrioridadBloqueoSalida = 98f
@@ -157,7 +157,7 @@ public class DesireGenerator
                 return new PhasePolicy
                 {
                     MaxTacticos = MAX_TACTICOS_ANILLO_ROBADO,
-                    MaxInterceptoresTrasPerdida = 2,
+                    MaxInterceptoresTrasPerdida = TacticalConfig.MaxInterceptorsAfterLoss,
                     MaxBloqueadoresSalida = MAX_BLOQUEADORES_SALIDA,
                     PrioridadIntercept = 76f,
                     PrioridadBloqueoSalida = 99f

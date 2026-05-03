@@ -75,7 +75,7 @@ public class ContractNetManager
 
     private List<string> SeleccionarParticipantes()
     {
-        List<string> participantes = AgentRegistry.Instance.ObtenerIdsPorTipo("guard");
+        List<string> participantes = AgentRegistry.Instance.ObtenerIdsPorTipo(GameConstants.AgentTypes.Guard);
 
         if (!creencias.AnilloRobado)
         {
@@ -173,15 +173,15 @@ public class ContractNetManager
     private bool EsZonaSalida(string zoneId)
     {
         return !string.IsNullOrEmpty(zoneId) &&
-               (zoneId.StartsWith("Exit_", System.StringComparison.OrdinalIgnoreCase) ||
-                zoneId.StartsWith("Salida_", System.StringComparison.OrdinalIgnoreCase));
+               (zoneId.StartsWith(GameConstants.ZonePrefixes.Exit, System.StringComparison.OrdinalIgnoreCase) ||
+                zoneId.StartsWith(GameConstants.ZonePrefixes.ExitAlt, System.StringComparison.OrdinalIgnoreCase));
     }
 
     private bool EsZonaAnillo(string zoneId)
     {
         if (string.IsNullOrEmpty(zoneId)) return false;
 
-        return zoneId.StartsWith("Anillo_", System.StringComparison.OrdinalIgnoreCase);
+        return zoneId.StartsWith(GameConstants.ZonePrefixes.Ring, System.StringComparison.OrdinalIgnoreCase);
     }
 
     // APERTURA DE CONTRATO Y ENVÍO DE CFP
@@ -208,7 +208,7 @@ public class ContractNetManager
         {
             ACLMessage cfp = new ACLMessage(ACLPerformative.CFP, agentId, receptor);
             cfp.Content        = ContentLanguage.Encode(tarea);
-            cfp.Protocol       = "fipa-contract-net";
+            cfp.Protocol       = GameConstants.Protocols.ContractNet;
             cfp.ConversationId = convId;
             comunicacion.Enviar(cfp);
         }
@@ -258,44 +258,6 @@ public class ContractNetManager
         }
     }
 
-    // INICIADOR
-
-    // Decide si este guardia debe lanzar la ronda de Contract Net. La regla
-    // es "el más cercano al ladrón inicia"; si hay empate aproximado en
-    // distancia, se desempata por orden lexicográfico del ID. Esto evita
-    // rondas simultáneas sin necesidad de coordinador central.
-    private bool SoyElIniciadorMasApropiado()
-    {
-        if (creencias.SoyElMasCercanoA(creencias.UltimaPosicionLadron))
-            return true;
-
-        float miDistancia = Vector3.Distance(creencias.MiPosicion, creencias.UltimaPosicionLadron);
-        bool hayEmpate = true;
-
-        foreach (var par in creencias.EstadosOtrosGuardias)
-        {
-            if (par.Value.CurrentPosition == null) continue;
-            float suDistancia = Vector3.Distance(par.Value.CurrentPosition.ToVector3(), creencias.UltimaPosicionLadron);
-            if (suDistancia < miDistancia - 0.5f) // Margen para evitar ruido
-            {
-                hayEmpate = false;
-                break;
-            }
-        }
-
-        if (!hayEmpate) return false;
-
-        List<string> otrosGuardias = AgentRegistry.Instance
-            .ObtenerOtrosIdsPorTipo("guard", agentId);
-
-        foreach (string otroId in otrosGuardias)
-        {
-            if (string.Compare(agentId, otroId) > 0)
-                return false; // Otro guardia tiene prioridad por ID
-        }
-
-        return true;
-    }
 }
 
 // Seguimiento del estado de una negociación Contract Net activa para una zona.
