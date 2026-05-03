@@ -351,6 +351,7 @@ public partial class BeliefBase
         TareaAsignada = tarea;
         ConversacionTareaAsignada = conversacionId;
         AsignadorTarea = asignador;
+        ReservarZonaGlobal(tarea?.ZoneId);
         VersionTareaAsignada++;
         NecesitaDeliberar = true; // SearchAssigned(85) entra en juego
     }
@@ -358,6 +359,7 @@ public partial class BeliefBase
 
     public void LimpiarTarea()
     {
+        LiberarReservaZonaGlobal(TareaAsignada?.ZoneId);
         TareaAsignada = null;
         ConversacionTareaAsignada = "";
         AsignadorTarea = "";

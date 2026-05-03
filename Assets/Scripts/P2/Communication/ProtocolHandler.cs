@@ -290,6 +290,15 @@ public class ProtocolHandler
             }
 
             SearchTask tarea = ContentLanguage.DecodeSearchTask(msg.Content);
+            if (tarea == null)
+                return;
+
+            if (creencias.ZonaReservadaPorOtro(tarea.ZoneId))
+            {
+                Debug.Log($"[{agentId}] ACCEPT_PROPOSAL ignorado: zona {tarea.ZoneId} ya reservada por otro guardia");
+                return;
+            }
+
             creencias.AsignarTarea(tarea, msg.ConversationId, msg.Sender);
             Debug.Log($"[{agentId}] Tarea adjudicada de {msg.Sender}: zona={tarea.ZoneId}");
         }

@@ -11,6 +11,9 @@ public partial class BeliefBase
     /// <summary>Timestamp de la ultima vez que el propio agente termino de buscar en cada zona.</summary>
     private Dictionary<string, float> ultimaBusquedaPorZona = new Dictionary<string, float>();
 
+    private static Dictionary<string, string> reservasZonaGlobales =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
     public void RegistrarZonaBusqueda(string zoneId, Vector3[] puntos)
     {
         if (string.IsNullOrEmpty(zoneId) || puntos == null || puntos.Length == 0) return;
@@ -67,7 +70,44 @@ public partial class BeliefBase
             if (!string.IsNullOrEmpty(zona))
                 cubiertas.Add(zona);
         }
+
+        foreach (var reserva in reservasZonaGlobales)
+        {
+            if (reserva.Value != MiId)
+                cubiertas.Add(reserva.Key);
+        }
+
         return cubiertas;
+    }
+
+    public bool ZonaReservadaPorOtro(string zoneId)
+    {
+        if (string.IsNullOrWhiteSpace(zoneId))
+            return false;
+
+        return reservasZonaGlobales.TryGetValue(zoneId.Trim(), out string ownerId) &&
+               ownerId != MiId;
+    }
+
+    private void ReservarZonaGlobal(string zoneId)
+    {
+        if (string.IsNullOrWhiteSpace(zoneId))
+            return;
+
+        reservasZonaGlobales[zoneId.Trim()] = MiId;
+    }
+
+    private void LiberarReservaZonaGlobal(string zoneId)
+    {
+        if (string.IsNullOrWhiteSpace(zoneId))
+            return;
+
+        string normalizada = zoneId.Trim();
+        if (reservasZonaGlobales.TryGetValue(normalizada, out string ownerId) &&
+            ownerId == MiId)
+        {
+            reservasZonaGlobales.Remove(normalizada);
+        }
     }
 
     /// <summary>
