@@ -543,7 +543,13 @@ public class GuardAgent : MonoBehaviour
         {
             creencias.BuscarLocalAntesDeCoordinar = false;
 
-            if (PuedeIniciarRondaBusquedaCoordinada())
+            if (EsMismaRondaBusquedaCoordinada())
+            {
+                creencias.ComprobarPedestalTrasBusquedaLocal = false;
+                busquedaCoordinadaPendiente = false;
+                creencias.PendienteBusquedaCoordinadaPorInformeExterno = false;
+            }
+            else if (SoyResponsableDeBusquedaCoordinada())
             {
                 bool contratoLanzado = contractNetManager.IniciarDistribucionBusqueda();
                 if (contratoLanzado)
@@ -559,6 +565,9 @@ public class GuardAgent : MonoBehaviour
                         selectorIntenciones.ForzarReset();
                         deliberacionPendiente = true;
                     }
+
+                    busquedaCoordinadaPendiente = false;
+                    creencias.PendienteBusquedaCoordinadaPorInformeExterno = false;
                 }
                 else if (!contratoLanzado)
                 {
@@ -572,9 +581,6 @@ public class GuardAgent : MonoBehaviour
             {
                 creencias.ComprobarPedestalTrasBusquedaLocal = false;
             }
-
-            busquedaCoordinadaPendiente = false;
-            creencias.PendienteBusquedaCoordinadaPorInformeExterno = false;
         }
 
         // Anillo desaparecido del pedestal — alertar al equipo
@@ -875,17 +881,19 @@ public class GuardAgent : MonoBehaviour
 
     private bool PuedeIniciarRondaBusquedaCoordinada()
     {
-        bool mismaRonda =
-            Time.time - ultimaRondaBusquedaCoordinada < RETARDO_BUSQUEDA_COORDINADA &&
-            Vector3.Distance(ultimaPosicionRondaBusqueda, creencias.UltimaPosicionLadron) < DISTANCIA_MISMA_RONDA_BUSQUEDA;
-
-        if (mismaRonda)
+        if (EsMismaRondaBusquedaCoordinada())
             return false;
 
         if (!SoyResponsableDeBusquedaCoordinada())
             return false;
 
         return true;
+    }
+
+    private bool EsMismaRondaBusquedaCoordinada()
+    {
+        return Time.time - ultimaRondaBusquedaCoordinada < RETARDO_BUSQUEDA_COORDINADA &&
+               Vector3.Distance(ultimaPosicionRondaBusqueda, creencias.UltimaPosicionLadron) < DISTANCIA_MISMA_RONDA_BUSQUEDA;
     }
 
     private bool SoyResponsableDeBusquedaCoordinada()
