@@ -93,6 +93,7 @@ public class ProtocolHandler
             ThiefSighting avistamiento = ContentLanguage.DecodeThiefSighting(msg.Content);
             if (avistamiento?.Location != null)
             {
+                bool informacionNueva = avistamiento.Timestamp > creencias.TiempoUltimaDeteccion;
                 creencias.ActualizarPosicionLadron(
                     avistamiento.Location.ToVector3(),
                     avistamiento.Timestamp,
@@ -101,10 +102,15 @@ public class ProtocolHandler
                     avistamiento.Direction != null ? avistamiento.Direction.ToVector3() : Vector3.zero,
                     avistamiento.Direction != null
                 );
-                creencias.BuscarLocalAntesDeCoordinar = false;
-                creencias.ComprobarPedestalTrasBusquedaLocal = false;
-                creencias.DebeComprobarPedestalPrioritario = false;
-                creencias.NecesitaDeliberar = true;
+                if (informacionNueva)
+                {
+                    creencias.LimpiarTarea();
+                    creencias.LimpiarRequest();
+                    creencias.BuscarLocalAntesDeCoordinar = false;
+                    creencias.ComprobarPedestalTrasBusquedaLocal = false;
+                    creencias.DebeComprobarPedestalPrioritario = false;
+                    creencias.NecesitaDeliberar = true;
+                }
                 if (LogsDetallados)
                     Debug.Log($"[{agentId}] Avistamiento recibido de {msg.Sender} en {avistamiento.Location}");
             }
@@ -225,6 +231,13 @@ public class ProtocolHandler
 
     public void ManejarCFP(ACLMessage msg, ActuadorMovimiento actuador)
     {
+        if (creencias.DebeComprobarPedestalPrioritario ||
+            creencias.EstadoActual == BehaviorType.CheckPedestal)
+        {
+            RechazarCFP(msg, "checking-pedestal");
+            return;
+        }
+
         if (creencias.EstadoActual == BehaviorType.Pursuit && creencias.LadronVisible)
         {
             RechazarCFP(msg, "in-pursuit");

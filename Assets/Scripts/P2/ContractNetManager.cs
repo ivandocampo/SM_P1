@@ -51,17 +51,7 @@ public class ContractNetManager
         if (Time.time - ultimoContractNet < cooldownEfectivo) return false;
         if (contratosActivos.Count > 0) return false;
 
-        List<string> participantes = AgentRegistry.Instance
-            .ObtenerIdsPorTipo("guard");
-        if (!creencias.AnilloRobado)
-        {
-            participantes.Remove(agentId);
-        }
-        else
-        {
-            HashSet<string> bloqueadoresSalida = creencias.ObtenerIdsBloqueadoresSalida(2);
-            participantes.RemoveAll(id => bloqueadoresSalida.Contains(id));
-        }
+        List<string> participantes = SeleccionarParticipantes();
 
         if (participantes.Count == 0) return false;
 
@@ -81,6 +71,24 @@ public class ContractNetManager
 
         Debug.Log($"[{agentId}] Contract Net iniciado: zonas=[{string.Join(", ", zonas)}], participantes=[{string.Join(", ", participantes)}]");
         return true;
+    }
+
+    private List<string> SeleccionarParticipantes()
+    {
+        List<string> participantes = AgentRegistry.Instance.ObtenerIdsPorTipo("guard");
+
+        if (!creencias.AnilloRobado)
+        {
+            // Fase 3: el iniciador coordina la busqueda y va al pedestal.
+            participantes.Remove(agentId);
+            return participantes;
+        }
+
+        // Fase 5: los dos bloqueadores preservan la salida; el iniciador solo
+        // participa si no es uno de ellos.
+        HashSet<string> bloqueadoresSalida = creencias.ObtenerIdsBloqueadoresSalida(2);
+        participantes.RemoveAll(id => bloqueadoresSalida.Contains(id));
+        return participantes;
     }
 
     // Evalúa los contratos abiertos cuando todos están listos y hace el matching

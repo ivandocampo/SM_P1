@@ -88,7 +88,7 @@ public class GuardAgent : MonoBehaviour
     private static float ultimaRondaBusquedaCoordinada = -100f;
     private static Vector3 ultimaPosicionRondaBusqueda = Vector3.positiveInfinity;
     private static string responsableBusquedaCoordinada = "";
-    private const float DISTANCIA_MISMA_RONDA_BUSQUEDA = 2f;
+    private const float DISTANCIA_MISMA_RONDA_BUSQUEDA = 10f;
     private float tiempoInicioCoberturaSalidaInsuficiente = -100f;
     private const float RETARDO_RELLENO_BLOQUEO_SALIDA = 2.5f;
     private static GUIStyle estiloDebugPanel;
@@ -417,6 +417,8 @@ public class GuardAgent : MonoBehaviour
         Vector3 direccion = CalcularDireccionObservada(posicion);
         creencias.ActualizarPosicionLadron(posicion, Time.time, true, agentId,
             direccion, direccion.sqrMagnitude > 0.01f);
+        creencias.LimpiarTarea();
+        creencias.LimpiarRequest();
         creencias.PrimerAvistamiento = true;
         busquedaCoordinadaPendiente = false;
         creencias.BuscarLocalAntesDeCoordinar = false;
@@ -431,6 +433,8 @@ public class GuardAgent : MonoBehaviour
         Vector3 direccion = CalcularDireccionObservada(posicion);
         creencias.ActualizarPosicionLadron(posicion, Time.time, true, agentId,
             direccion, direccion.sqrMagnitude > 0.01f);
+        creencias.LimpiarTarea();
+        creencias.LimpiarRequest();
         busquedaCoordinadaPendiente = false;
         creencias.BuscarLocalAntesDeCoordinar = false;
         creencias.ComprobarPedestalTrasBusquedaLocal = false;
@@ -577,8 +581,10 @@ public class GuardAgent : MonoBehaviour
     {
         if (creencias.AnilloRobado) return;
 
+        if (!busquedaCoordinadaPendiente)
+            tiempoPerdidaLadron = Time.time;
+
         busquedaCoordinadaPendiente = true;
-        tiempoPerdidaLadron = Time.time;
     }
 
     private void GestionarCaducidadHipotesisLadron()
@@ -809,7 +815,9 @@ public class GuardAgent : MonoBehaviour
             return;
         }
 
-        string zonaLibre = creencias.ObtenerZonaSinCubrir(soloExit: creencias.AnilloRobado);
+        string zonaLibre = creencias.AnilloRobado
+            ? creencias.ObtenerSiguienteZonaExitPorRotacion()
+            : creencias.ObtenerZonaSinCubrir(soloExit: false);
         if (string.IsNullOrEmpty(zonaLibre)) return;
 
         Vector3 centro = creencias.ObtenerCentroZona(zonaLibre);

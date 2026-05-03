@@ -344,6 +344,55 @@ public class BeliefBase
             .FirstOrDefault();
     }
 
+    public string ObtenerSiguienteZonaExitPorRotacion(int maxPorZona = 2)
+    {
+        Dictionary<string, int> ocupacion = new Dictionary<string, int>();
+        foreach (var par in EstadosOtrosGuardias)
+        {
+            string zona = par.Value.CurrentZone;
+            if (string.IsNullOrEmpty(zona)) continue;
+            ocupacion.TryGetValue(zona, out int n);
+            ocupacion[zona] = n + 1;
+        }
+
+        var candidatas = ObtenerIdsZonasBusqueda()
+            .Where(z => !string.IsNullOrEmpty(z) &&
+                        z.StartsWith("Exit_", StringComparison.OrdinalIgnoreCase))
+            .Where(z => (ocupacion.TryGetValue(z, out int n) ? n : 0) < maxPorZona)
+            .ToList();
+
+        // Si no quedan zonas con hueco (caso degenerado, e.g. estados aun no
+        // propagados), relajamos el filtro para no devolver vacio.
+        if (candidatas.Count == 0)
+        {
+            candidatas = ObtenerIdsZonasBusqueda()
+                .Where(z => !string.IsNullOrEmpty(z) &&
+                            z.StartsWith("Exit_", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        return candidatas
+            .OrderBy(z => ObtenerTiempoUltimaBusqueda(z))
+            .ThenBy(ExtraerNumeroZona)
+            .ThenBy(z => z, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
+    }
+
+    private int ExtraerNumeroZona(string zoneId)
+    {
+        int numero = 0;
+        bool tieneDigitos = false;
+
+        foreach (char c in zoneId)
+        {
+            if (!char.IsDigit(c)) continue;
+            tieneDigitos = true;
+            numero = numero * 10 + (c - '0');
+        }
+
+        return tieneDigitos ? numero : int.MaxValue;
+    }
+
     public TacticalPhase FaseActual()
     {
         if (AnilloRobado)

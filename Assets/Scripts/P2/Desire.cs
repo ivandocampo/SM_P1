@@ -36,6 +36,15 @@ public class DesireGenerator
     private const int MAX_TACTICOS_ANILLO_ROBADO = 3;
     private const int MAX_BLOQUEADORES_SALIDA = 2;
 
+    private struct PhasePolicy
+    {
+        public int MaxTacticos;
+        public int MaxInterceptoresTrasPerdida;
+        public int MaxBloqueadoresSalida;
+        public float PrioridadIntercept;
+        public float PrioridadBloqueoSalida;
+    }
+
     public DesireGenerator(BeliefBase creencias)
     {
         this.creencias = creencias;
@@ -113,21 +122,77 @@ public class DesireGenerator
                creencias.EstadoActual == BehaviorType.Search;
     }
 
+    private PhasePolicy ObtenerPoliticaDeFase(TacticalPhase fase)
+    {
+        switch (fase)
+        {
+            case TacticalPhase.RingSafeThiefKnown:
+                return new PhasePolicy
+                {
+                    MaxTacticos = MAX_TACTICOS_ANILLO_SEGURO,
+                    MaxInterceptoresTrasPerdida = 2,
+                    MaxBloqueadoresSalida = 0,
+                    PrioridadIntercept = 92f,
+                    PrioridadBloqueoSalida = 0f
+                };
+            case TacticalPhase.RingSafeThiefLost:
+                return new PhasePolicy
+                {
+                    MaxTacticos = MAX_TACTICOS_ANILLO_SEGURO,
+                    MaxInterceptoresTrasPerdida = 2,
+                    MaxBloqueadoresSalida = 0,
+                    PrioridadIntercept = 74f,
+                    PrioridadBloqueoSalida = 0f
+                };
+            case TacticalPhase.RingStolenThiefKnown:
+                return new PhasePolicy
+                {
+                    MaxTacticos = MAX_TACTICOS_ANILLO_ROBADO,
+                    MaxInterceptoresTrasPerdida = 2,
+                    MaxBloqueadoresSalida = MAX_BLOQUEADORES_SALIDA,
+                    PrioridadIntercept = 90f,
+                    PrioridadBloqueoSalida = 98f
+                };
+            case TacticalPhase.RingStolenThiefLost:
+                return new PhasePolicy
+                {
+                    MaxTacticos = MAX_TACTICOS_ANILLO_ROBADO,
+                    MaxInterceptoresTrasPerdida = 2,
+                    MaxBloqueadoresSalida = MAX_BLOQUEADORES_SALIDA,
+                    PrioridadIntercept = 76f,
+                    PrioridadBloqueoSalida = 99f
+                };
+            default:
+                return new PhasePolicy
+                {
+                    MaxTacticos = MAX_TACTICOS_ANILLO_SEGURO,
+                    MaxInterceptoresTrasPerdida = 0,
+                    MaxBloqueadoresSalida = 0,
+                    PrioridadIntercept = 0f,
+                    PrioridadBloqueoSalida = 0f
+                };
+        }
+    }
+
     private void AgregarPersecucionSiProcede(List<Desire> deseos, TacticalPhase fase)
     {
         if (fase != TacticalPhase.RingSafeThiefKnown &&
             fase != TacticalPhase.RingStolenThiefKnown)
             return;
 
-        // Solo el guardia que mantiene contacto visual debe perseguir directamente.
+        // Solo el guardia que tuvo deteccion propia reciente debe perseguir directamente.
         // Los guardias que conocen la posicion por comunicacion se organizan como
         // interceptores, bloqueadores o buscadores para evitar persecuciones redundantes.
-        if (!creencias.LadronVisible || !creencias.TieneDeteccionPropiaReciente())
+        if (!creencias.TieneDeteccionPropiaReciente())
             return;
 
-        int maxPerseguidores = creencias.AnilloRobado
-            ? MAX_TACTICOS_ANILLO_ROBADO
-            : MAX_TACTICOS_ANILLO_SEGURO;
+        // Si ya entramos en busqueda local (1.5s sin visual), abandonamos Pursuit
+        // para que el pursuer transicione a Search igual que hacen los interceptores.
+        if (creencias.BuscarLocalAntesDeCoordinar)
+            return;
+
+        PhasePolicy politica = ObtenerPoliticaDeFase(fase);
+        int maxPerseguidores = politica.MaxTacticos;
 
         if (creencias.AnilloRobado)
         {
@@ -197,32 +262,28 @@ public class DesireGenerator
 
     private void AgregarIntercepcionSiProcede(List<Desire> deseos, TacticalPhase fase)
     {
+        PhasePolicy politica = ObtenerPoliticaDeFase(fase);
         int maxInterceptores;
-        float prioridadBase;
 
         switch (fase)
         {
             case TacticalPhase.RingSafeThiefKnown:
                 maxInterceptores = Mathf.Max(0,
-                    MAX_TACTICOS_ANILLO_SEGURO - creencias.GuardiasEnEstado(BehaviorType.Pursuit));
-                prioridadBase = 92f;
+                    politica.MaxTacticos - creencias.GuardiasEnEstado(BehaviorType.Pursuit));
                 break;
             case TacticalPhase.RingSafeThiefLost:
                 if (creencias.AntiguedadInfoLadron >= 3f)
                     return;
-                maxInterceptores = 2;
-                prioridadBase = 74f;
+                maxInterceptores = politica.MaxInterceptoresTrasPerdida;
                 break;
             case TacticalPhase.RingStolenThiefKnown:
                 maxInterceptores = Mathf.Max(0,
-                    MAX_TACTICOS_ANILLO_ROBADO - creencias.GuardiasEnEstado(BehaviorType.Pursuit));
-                prioridadBase = 90f;
+                    politica.MaxTacticos - creencias.GuardiasEnEstado(BehaviorType.Pursuit));
                 break;
             case TacticalPhase.RingStolenThiefLost:
                 if (creencias.AntiguedadInfoLadron >= 3f)
                     return;
-                maxInterceptores = 2;
-                prioridadBase = 76f;
+                maxInterceptores = politica.MaxInterceptoresTrasPerdida;
                 break;
             default:
                 return;
@@ -239,8 +300,9 @@ public class DesireGenerator
         Vector3 referenciaSeleccion = faseConLadronLocalizado
             ? creencias.UltimaPosicionLadron
             : creencias.CalcularPuntoInterceptacion(0);
+        int reservaPedestal = fase == TacticalPhase.RingSafeThiefKnown ? 1 : 0;
         int maxCandidatos = faseConLadronLocalizado
-            ? MAX_TACTICOS_ANILLO_ROBADO
+            ? maxInterceptores + creencias.GuardiasEnEstado(BehaviorType.Pursuit) + reservaPedestal
             : maxInterceptores;
 
         bool soyInterceptorActual = creencias.EstadoActual == BehaviorType.Intercept;
@@ -267,7 +329,7 @@ public class DesireGenerator
         Vector3 punto = creencias.CalcularPuntoInterceptacion();
         deseos.Add(new Desire(
             BehaviorType.Intercept,
-            PrioridadPorCercania(prioridadBase, punto, 0.12f),
+            PrioridadPorCercania(politica.PrioridadIntercept, punto, 0.12f),
             punto
         ));
     }
@@ -285,10 +347,11 @@ public class DesireGenerator
         if (!faseContactoTactico)
             return;
 
-        if (!creencias.SoyElMasCercanoA(creencias.PosicionPedestal))
+        if (!SoyCandidatoPedestal(fase))
             return;
 
-        if (Time.time - creencias.UltimoChequeoPedestal < 6f)
+        if (fase != TacticalPhase.RingSafeThiefKnown &&
+            Time.time - creencias.UltimoChequeoPedestal < 6f)
             return;
 
         bool soyGuardaPedestal = creencias.EstadoActual == BehaviorType.CheckPedestal;
@@ -306,6 +369,29 @@ public class DesireGenerator
         ));
     }
 
+    private bool SoyCandidatoPedestal(TacticalPhase fase)
+    {
+        if (fase != TacticalPhase.RingSafeThiefKnown)
+            return creencias.SoyElMasCercanoA(creencias.PosicionPedestal);
+
+        HashSet<string> excluir = new HashSet<string>();
+        if (!string.IsNullOrEmpty(creencias.FuenteUltimaDeteccion))
+            excluir.Add(creencias.FuenteUltimaDeteccion);
+
+        if (creencias.TieneDeteccionPropiaReciente())
+            excluir.Add(creencias.MiId);
+
+        foreach (var par in creencias.EstadosOtrosGuardias)
+        {
+            if (par.Value.CurrentState == BehaviorType.Pursuit.ToString())
+                excluir.Add(par.Key);
+        }
+
+        return creencias
+            .ObtenerIdsMasCercanosA(creencias.PosicionPedestal, 1, excluir)
+            .Contains(creencias.MiId);
+    }
+
     private void AgregarBusquedaSiProcede(List<Desire> deseos, TacticalPhase fase)
     {
         bool faseContactoTactico = fase == TacticalPhase.RingSafeThiefKnown ||
@@ -313,6 +399,13 @@ public class DesireGenerator
 
         if (creencias.BuscarLocalAntesDeCoordinar && faseContactoTactico)
         {
+            // Si llego informacion fresca (otro guardia ve a Frodo), abandonamos
+            // la busqueda local para que Intercept/Pursuit tomen el relevo.
+            // Solo generamos Search(98) cuando nadie ha visto al ladron en la
+            // ventana de gracia (1.5s).
+            if (creencias.AntiguedadInfoLadron < BeliefBase.TIEMPO_GRACIA_PERDIDA_LADRON)
+                return;
+
             deseos.Add(new Desire(
                 BehaviorType.Search,
                 98f,
@@ -321,8 +414,12 @@ public class DesireGenerator
             return;
         }
 
-        if (fase != TacticalPhase.RingSafeThiefLost &&
-            fase != TacticalPhase.RingStolenThiefLost)
+        // En Fase 3 (RingSafeThiefLost) la busqueda activa esta cubierta por
+        // el Contract Net (SearchAssigned). Quien no tenga zona asignada cae a
+        // Patrol(10) hasta que la fase expire a NormalPatrol. Solo en Fase 5
+        // (RingStolenThiefLost) generamos Search libre para mantener a todo el
+        // equipo activo.
+        if (fase != TacticalPhase.RingStolenThiefLost)
             return;
 
         const int MAX_BUSCADORES = 5;
@@ -343,13 +440,19 @@ public class DesireGenerator
         if (!creencias.AnilloRobado) return;
         if (!creencias.TienePosicionSalida) return;
 
-        bool contactoDirectoPropio = creencias.LadronVisible && creencias.TieneDeteccionPropiaReciente();
-        if (!creencias.SoyEntreMasCercanosParaBloquearSalida(MAX_BLOQUEADORES_SALIDA, contactoDirectoPropio))
-            return;
+        PhasePolicy politica = ObtenerPoliticaDeFase(fase);
 
+        bool contactoDirectoPropio = creencias.LadronVisible && creencias.TieneDeteccionPropiaReciente();
         bool soyBloqueadorActual = creencias.EstadoActual == BehaviorType.BlockExit;
 
-        float prioridadBloqueo = fase == TacticalPhase.RingStolenThiefKnown ? 98f : 99f;
+        // Sticky: si ya estoy bloqueando, mantengo BlockExit aunque me haya alejado
+        // de la salida visitando puntos de bloqueo. Solo Pursuit (con visual propio)
+        // puede sacarme de aqui.
+        if (!soyBloqueadorActual &&
+            !creencias.SoyEntreMasCercanosParaBloquearSalida(politica.MaxBloqueadoresSalida, contactoDirectoPropio))
+            return;
+
+        float prioridadBloqueo = politica.PrioridadBloqueoSalida;
         if (soyBloqueadorActual)
             prioridadBloqueo += 1f;
 
