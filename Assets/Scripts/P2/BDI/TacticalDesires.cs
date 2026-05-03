@@ -121,7 +121,7 @@ public partial class DesireGenerator
 
         TacticalPhasePolicy politica = ObtenerPoliticaDeFase(fase);
 
-        bool contactoDirectoPropio = creencias.LadronVisible && creencias.TieneDeteccionPropiaReciente();
+        bool contactoDirectoPropio = TieneContactoPropioFuerte();
         bool soyBloqueadorActual = creencias.EstadoActual == BehaviorType.BlockExit;
         bool soyBloqueadorElegido = creencias.ObtenerIdsBloqueadoresSalidaEstables(
             politica.MaxBloqueadoresSalida,
@@ -151,12 +151,21 @@ public partial class DesireGenerator
     {
         HashSet<string> bloqueadores = creencias.ObtenerIdsBloqueadoresSalidaEstables(MAX_BLOQUEADORES_SALIDA);
 
-        if (creencias.LadronVisible && creencias.TieneDeteccionPropiaReciente())
+        if (TieneContactoPropioFuerte())
             bloqueadores.Remove(creencias.MiId);
 
         return creencias
             .ObtenerIdsMasCercanosA(referencia, maxAgentes, bloqueadores)
             .Contains(creencias.MiId);
+    }
+
+    private bool TieneContactoPropioFuerte()
+    {
+        if (!creencias.TieneDeteccionPropiaReciente())
+            return false;
+
+        return creencias.LadronVisible ||
+               creencias.DistanciaEstimadaAlLadron() <= TacticalConfig.CloseOwnDetectionDistance;
     }
 
     private void AgregarFallbackDefensaSalida(List<Desire> deseos, TacticalPhase fase)
