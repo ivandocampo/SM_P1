@@ -1,11 +1,19 @@
+// =============================================================
+// Manejador de protocolos FIPA-ACL para los guardias.
+// Construye mensajes de respuesta o difusion y procesa los mensajes
+// recibidos segun su contenido: avistamientos, predicados, estados,
+// REQUEST, QUERY y fases del Contract-Net. Actua como puente entre
+// ComunicacionAgente y la base de creencias BDI del guardia
+// =============================================================
+
 using UnityEngine;
 
-// Gestiona la construccion y el manejo de mensajes FIPA-ACL para un guardia.
-// Actua como intermediario entre el cerebro del agente (GuardAgent) y el buzon (ComunicacionAgente).
 public class ProtocolHandler
 {
+    // Permite activar logs extra sin llenar la consola durante ejecucion normal.
     public static bool LogsDetallados = false;
 
+    // Referencias principales: creencias BDI, buzon de comunicacion y selector de intenciones.
     private BeliefBase creencias;
     private ComunicacionAgente comunicacion;
     private IntentionSelector selectorIntenciones;
@@ -20,8 +28,8 @@ public class ProtocolHandler
         this.agentId = id;
     }
 
-    // CONSTRUCTORES DE MENSAJES
-
+    // Difunde al equipo un avistamiento de Frodo.
+    // El contenido viaja como ThiefSighting serializado por ContentLanguage.
     public void InformarAvistamiento(ThiefSighting avistamiento)
     {
         ACLMessage msg = new ACLMessage(ACLPerformative.INFORM, agentId, "");
@@ -30,6 +38,7 @@ public class ProtocolHandler
         comunicacion.Broadcast(msg);
     }
 
+    // Difunde un hecho simple del mundo, por ejemplo anillo robado o ladron perdido.
     public void InformarPredicado(PredicateType predicado, string extraData = "")
     {
         ACLMessage msg = new ACLMessage(ACLPerformative.INFORM, agentId, "");
@@ -38,9 +47,11 @@ public class ProtocolHandler
         comunicacion.Broadcast(msg);
     }
 
+    // Respuesta positiva a una solicitud recibida.
     public void ResponderAgree(ACLMessage original)
         => comunicacion.Enviar(original.CreateReply(ACLPerformative.AGREE));
 
+    // Respuesta negativa a una solicitud o CFP, indicando el motivo en Content.
     public void ResponderRefuse(ACLMessage original, string motivo = GameConstants.RefusalReasons.Busy)
     {
         ACLMessage reply = original.CreateReply(ACLPerformative.REFUSE);
@@ -48,6 +59,7 @@ public class ProtocolHandler
         comunicacion.Enviar(reply);
     }
 
+    // Respuesta cuando el mensaje recibido no tiene un contenido reconocible.
     public void ResponderNotUnderstood(ACLMessage original, string motivo = GameConstants.RefusalReasons.ContentNotUnderstood)
     {
         ACLMessage reply = original.CreateReply(ACLPerformative.NOT_UNDERSTOOD);
@@ -55,6 +67,7 @@ public class ProtocolHandler
         comunicacion.Enviar(reply);
     }
 
+    // Notifica que una tarea o solicitud asociada a una conversacion ha terminado.
     public void NotificarDone(string convId, string solicitante)
     {
         ACLMessage done = new ACLMessage(ACLPerformative.INFORM_DONE, agentId, solicitante);
@@ -63,6 +76,7 @@ public class ProtocolHandler
         comunicacion.Enviar(done);
     }
 
+    // Responde a consultas QUERY con un resultado ya codificado como string.
     public void ResponderQuery(ACLMessage query, string resultado)
     {
         ACLMessage reply = query.CreateReply(ACLPerformative.INFORM_RESULT);
@@ -70,6 +84,7 @@ public class ProtocolHandler
         comunicacion.Enviar(reply);
     }
 
+    // Envia una propuesta de coste como respuesta a un CFP de Contract-Net.
     public void ResponderCFPConPropuesta(ACLMessage cfp, ProposalData propuesta)
     {
         ACLMessage propose = cfp.CreateReply(ACLPerformative.PROPOSE);
@@ -77,6 +92,7 @@ public class ProtocolHandler
         comunicacion.Enviar(propose);
     }
 
+    // Rechaza un CFP cuando el guardia no puede participar en la tarea.
     public void RechazarCFP(ACLMessage cfp, string motivo = GameConstants.RefusalReasons.Unavailable)
     {
         ACLMessage refuse = cfp.CreateReply(ACLPerformative.REFUSE);
@@ -84,15 +100,16 @@ public class ProtocolHandler
         comunicacion.Enviar(refuse);
     }
 
-    // MANEJADORES
 
     public void ManejarInform(ACLMessage msg)
     {
+        // INFORM con ThiefSighting: actualiza la ultima informacion conocida sobre Frodo.
         if (ContentLanguage.IsThiefSighting(msg.Content))
         {
             ThiefSighting avistamiento = ContentLanguage.DecodeThiefSighting(msg.Content);
             if (avistamiento?.Location != null)
             {
+                // Solo se limpian tareas y se fuerza deliberacion si el informe es mas reciente.
                 bool informacionNueva = avistamiento.Timestamp > creencias.TiempoUltimaDeteccion;
                 creencias.ActualizarPosicionLadron(
                     avistamiento.Location.ToVector3(),
@@ -111,6 +128,7 @@ public class ProtocolHandler
                     creencias.DebeComprobarPedestalPrioritario = false;
                     if (avistamiento.ReportedBy != agentId)
                         creencias.PendienteBusquedaCoordinadaPorInformeExterno = true;
+                    // El BDI debe reconsiderar su intencion con la nueva informacion.
                     creencias.NecesitaDeliberar = true;
                 }
                 if (LogsDetallados)
@@ -119,6 +137,7 @@ public class ProtocolHandler
             return;
         }
 
+        // INFORM con GuardStatus: actualiza la tabla de estados del equipo.
         if (ContentLanguage.IsGuardStatus(msg.Content))
         {
             GuardStatus estado = ContentLanguage.DecodeGuardStatus(msg.Content);
@@ -127,6 +146,7 @@ public class ProtocolHandler
             return;
         }
 
+        // INFORM con PredicateInfo: representa hechos simples del mundo.
         if (ContentLanguage.IsPredicate(msg.Content))
         {
             PredicateInfo info = ContentLanguage.DecodePredicate(msg.Content);
@@ -149,18 +169,21 @@ public class ProtocolHandler
 
     public void ManejarRequest(ACLMessage msg)
     {
+        // Primero valida que el contenido sea una ActionRequest reconocible.
         if (!ContentLanguage.IsActionRequest(msg.Content))
         {
             ResponderNotUnderstood(msg, GameConstants.RefusalReasons.ContentNotUnderstood);
             return;
         }
 
+        // Si el guardia esta persiguiendo, no acepta ordenes secundarias.
         if (creencias.EstadoActual == BehaviorType.Pursuit)
         {
             ResponderRefuse(msg, GameConstants.RefusalReasons.InPursuit);
             return;
         }
 
+        // Se comprueba que la accion exista en la ontologia de acciones.
         ActionRequest solicitud = ContentLanguage.DecodeActionRequest(msg.Content);
         if (solicitud == null ||
             string.IsNullOrEmpty(solicitud.Action) ||
@@ -170,6 +193,7 @@ public class ProtocolHandler
             return;
         }
 
+        // Una solicitud urgente puede aceptarse aunque el agente no este totalmente libre.
         bool puedoAceptar = selectorIntenciones.EstaDisponible() || solicitud.Urgency > 0.8f;
 
         if (puedoAceptar)
@@ -187,6 +211,7 @@ public class ProtocolHandler
 
     public void ManejarQuery(ACLMessage msg)
     {
+        // QUERY_REF generica: responde con el estado actual del guardia.
         GuardStatus estado = new GuardStatus
         {
             GuardId = agentId,
@@ -199,6 +224,7 @@ public class ProtocolHandler
 
     public void ManejarQueryIf(ACLMessage msg)
     {
+        // QUERY_IF puede preguntar por predicados booleanos del mundo.
         if (ContentLanguage.IsPredicate(msg.Content))
         {
             PredicateInfo info = ContentLanguage.DecodePredicate(msg.Content);
@@ -223,6 +249,7 @@ public class ProtocolHandler
 
     public void ManejarInformResult(ACLMessage msg)
     {
+        // Resultado de una query: si trae estado de guardia, se integra en creencias.
         if (ContentLanguage.IsGuardStatus(msg.Content))
         {
             GuardStatus estado = ContentLanguage.DecodeGuardStatus(msg.Content);
@@ -233,6 +260,7 @@ public class ProtocolHandler
 
     public void ManejarCFP(ACLMessage msg, ActuadorMovimiento actuador)
     {
+        // Un guardia ya asignado a una zona o bloqueando salida no participa en otra subasta.
         if (creencias.TieneTareaAsignada ||
             creencias.EstadoActual == BehaviorType.SearchAssigned ||
             creencias.EstadoActual == BehaviorType.BlockExit)
@@ -241,6 +269,7 @@ public class ProtocolHandler
             return;
         }
 
+        // Si tiene que revisar el pedestal, esa tarea tiene prioridad sobre aceptar un CFP.
         if (creencias.DebeComprobarPedestalPrioritario ||
             creencias.EstadoActual == BehaviorType.CheckPedestal)
         {
@@ -248,12 +277,14 @@ public class ProtocolHandler
             return;
         }
 
+        // Si esta persiguiendo visualmente a Frodo, no abandona la persecucion.
         if (creencias.EstadoActual == BehaviorType.Pursuit && creencias.LadronVisible)
         {
             RechazarCFP(msg, GameConstants.RefusalReasons.InPursuit);
             return;
         }
 
+        // El CFP debe contener una SearchTask valida.
         SearchTask tarea = ContentLanguage.DecodeSearchTask(msg.Content);
         if (tarea == null)
         {
@@ -261,6 +292,7 @@ public class ProtocolHandler
             return;
         }
 
+        // El coste de la propuesta se calcula como distancia hasta la zona objetivo.
         Vector3 objetivoTarea = tarea.TargetArea.ToVector3();
         Vector3[] puntosZona = creencias.ObtenerPuntosZona(tarea.ZoneId);
         if (puntosZona != null && puntosZona.Length > 0)
@@ -280,6 +312,7 @@ public class ProtocolHandler
 
     public void ManejarPropuestaAceptada(ACLMessage msg)
     {
+        // ACCEPT_PROPOSAL asigna formalmente una zona de busqueda al guardia.
         if (ContentLanguage.IsSearchTask(msg.Content))
         {
             if (creencias.TieneTareaAsignada &&
@@ -293,6 +326,7 @@ public class ProtocolHandler
             if (tarea == null)
                 return;
 
+            // Evita aceptar una zona que otro guardia ya haya reservado.
             if (creencias.ZonaReservadaPorOtro(tarea.ZoneId))
             {
                 Debug.Log($"[{agentId}] ACCEPT_PROPOSAL ignorado: zona {tarea.ZoneId} ya reservada por otro guardia");
@@ -307,6 +341,7 @@ public class ProtocolHandler
 
     public void ManejarPropuestaRechazada(ACLMessage msg)
     {
+        // Si rechazan nuestra propuesta, el otro agente queda marcado como disponible.
         creencias.ActualizarDisponibilidadGuardia(msg.Sender, true);
         if (LogsDetallados)
             Debug.Log($"[{agentId}] Propuesta rechazada por {msg.Sender}");
@@ -314,6 +349,7 @@ public class ProtocolHandler
 
     public void ManejarDone(ACLMessage msg)
     {
+        // INFORM_DONE indica que otro agente completo la tarea que tenia asignada.
         creencias.ActualizarDisponibilidadGuardia(msg.Sender, true, BehaviorType.Patrol.ToString());
         Debug.Log($"[{agentId}] Tarea completada confirmada por {msg.Sender}");
         comunicacion.LoguearConversacion(msg.ConversationId);
@@ -321,12 +357,14 @@ public class ProtocolHandler
 
     public void ManejarAgree(ACLMessage msg)
     {
+        // AGREE marca al emisor como ocupado porque acepto una solicitud.
         creencias.ActualizarDisponibilidadGuardia(msg.Sender, false);
         Debug.Log($"[{agentId}] {msg.Sender} acepto nuestra solicitud");
     }
 
     public void ManejarRefuse(ACLMessage msg)
     {
+        // REFUSE guarda que el emisor no va a ejecutar la solicitud.
         creencias.ActualizarDisponibilidadGuardia(msg.Sender, false);
         Debug.Log($"[{agentId}] {msg.Sender} rechazo nuestra solicitud: {msg.Content}");
     }
@@ -335,6 +373,7 @@ public class ProtocolHandler
     {
         bool cancelado = false;
 
+        // Cancela una REQUEST aceptada si coincide la conversacion.
         if (!string.IsNullOrEmpty(msg.ConversationId) &&
             msg.ConversationId == creencias.ConversacionRequest)
         {
@@ -342,6 +381,7 @@ public class ProtocolHandler
             cancelado = true;
         }
 
+        // Cancela una tarea asignada por Contract-Net si coincide la conversacion.
         if (!string.IsNullOrEmpty(msg.ConversationId) &&
             msg.ConversationId == creencias.ConversacionTareaAsignada)
         {
@@ -368,6 +408,7 @@ public class ProtocolHandler
 
     private bool EvaluarPredicado(string predicado)
     {
+        // Traduce predicados de la ontologia a valores booleanos de la base de creencias.
         if (predicado == PredicateType.RING_STOLEN.ToString())
             return creencias.AnilloRobado;
         if (predicado == PredicateType.RING_ON_PEDESTAL.ToString())

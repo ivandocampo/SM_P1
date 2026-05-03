@@ -1,11 +1,20 @@
+// =============================================================
+// Sensor de vision usado por guardias y aranas.
+// Detecta objetivos dentro de un cono de vision configurable, valida
+// obstaculos mediante raycast y emite eventos cuando Frodo aparece,
+// permanece visible, se pierde de vista o el anillo desaparece del pedestal
+// =============================================================
+
 using UnityEngine;
 using System;
  
 public class SensorVision : MonoBehaviour
 {
     [Header("Configuración de Visión")]
+    // Rango maximo y semiangulo del cono de vision
     public float rangoVision = 15f;
     public float anguloVision = 60f;
+    // Capas que bloquean la vision y capas en las que se buscan objetivos
     public LayerMask capasObstaculos;
     public LayerMask capasDetectables;    // capas a escanear con OverlapSphere
  
@@ -22,16 +31,17 @@ public class SensorVision : MonoBehaviour
     [Header("Rendimiento")]
     public float intervaloChequeo = 0.1f; // segundos entre escaneos
  
-    // === EVENTOS ===
-    public event Action<Vector3> OnObjetivoDetectado;  // no visible → visible
-    public event Action OnObjetivoPerdido;              // visible → no visible
+    // Eventos que consumen los agentes para actualizar sus creencias
+    public event Action<Vector3> OnObjetivoDetectado;  // no visible a visible
+    public event Action OnObjetivoPerdido;              // visible a no visible
     public event Action<Vector3> OnObjetivoVisible;    // sigue visible
     public event Action OnAnilloDesaparecido;           // anillo recogido y pedestal visible
  
-    // === ESTADO ===
+    // Estado publico de lectura para saber si el sensor esta viendo a Frodo.
     public bool ObjetivoEsVisible { get; private set; } = false;
     public bool ObjetivoVisibleConAnillo { get; private set; } = false;
  
+    // Estado interno para detectar cambios entre visible/no visible
     private bool eraVisible = false;
     private bool anilloDesaparecidoNotificado = false;
     private Vector3 posicionOriginalAnillo;
@@ -40,10 +50,12 @@ public class SensorVision : MonoBehaviour
  
     void Start()
     {
+        // Busca a Frodo por tag para consultar si esta usando o portando el anillo
         GameObject frodo = GameObject.FindWithTag(tagObjetivo);
         if (frodo != null)
             cerebroFrodo = frodo.GetComponent<CerebroFrodo>();
  
+        // Guarda la posicion inicial del anillo, que actua como posicion del pedestal
         if (objetoAnillo != null)
             posicionOriginalAnillo = objetoAnillo.position;
     }
@@ -52,18 +64,22 @@ public class SensorVision : MonoBehaviour
     {
         if (!GameManager.Instance.PartidaActiva) return;
  
+        // El sensor no escanea en todos los frames: espera al siguiente intervalo
         timerChequeo -= Time.deltaTime;
         if (timerChequeo > 0f) return;
         timerChequeo = intervaloChequeo;
  
+        // Escaneo principal del cono de vision
         Transform objetivo = EscanearCono();
         bool esVisible = objetivo != null;
         ObjetivoEsVisible = esVisible;
+        // Solo se considera "visible con anillo" si Frodo lo lleva y no esta invisible
         ObjetivoVisibleConAnillo = esVisible
             && cerebroFrodo != null
             && cerebroFrodo.TieneElAnillo
             && !cerebroFrodo.usandoAnillo;
  
+        // Se emite un evento distinto segun el cambio de estado visual
         if (esVisible && !eraVisible)
             OnObjetivoDetectado?.Invoke(objetivo.position);
         else if (!esVisible && eraVisible)
@@ -75,21 +91,25 @@ public class SensorVision : MonoBehaviour
  
         eraVisible = esVisible;
  
+        // Ademas de mirar a Frodo, comprueba si el pedestal visible quedo vacío
         ComprobarAnillo();
     }
  
-    // Lanza un OverlapSphere y filtra por cono + LOS. Devuelve el transform del primer
-    // objetivo válido encontrado, o null si no hay ninguno en el cono.
+    // Lanza un OverlapSphere y filtra candidatos por tag, anillo, angulo y obstaculos
     private Transform EscanearCono()
     {
+        // Primer filtro barato: candidatos cercanos dentro del rango del sensor
         Collider[] candidatos = Physics.OverlapSphere(transform.position, rangoVision, capasDetectables);
  
         foreach (Collider col in candidatos)
         {
+            // Solo interesa Frodo u otro objetivo con el tag configurado
             if (!col.CompareTag(tagObjetivo)) continue;
  
+            // Si Frodo esta usando el anillo, la vision no puede detectarlo
             if (cerebroFrodo != null && cerebroFrodo.usandoAnillo) continue;
  
+            // Se usan alturas separadas para simular ojos del agente y centro del objetivo
             Vector3 posOjos     = transform.position + Vector3.up * alturaOjos;
             Vector3 posObjetivo = col.transform.position + Vector3.up * alturaObjetivo;
             Vector3 direccion   = (posObjetivo - posOjos).normalized;
@@ -100,6 +120,7 @@ public class SensorVision : MonoBehaviour
             Vector3 forwardFlat = new Vector3(transform.forward.x, 0f, transform.forward.z).normalized;
             if (Vector3.Angle(forwardFlat, dirFlat) > anguloVision) continue;
  
+            // Si hay una pared u obstaculo entre los ojos y Frodo, no hay vision
             if (Physics.Raycast(posOjos, direccion, distancia, capasObstaculos)) continue;
  
             return col.transform;
@@ -110,10 +131,13 @@ public class SensorVision : MonoBehaviour
  
     private void ComprobarAnillo()
     {
+        // La desaparicion del anillo solo se notifica una vez
         if (anilloDesaparecidoNotificado) return;
         if (objetoAnillo == null) return;
+        // Si el objeto sigue activo, el anillo continua en el pedestal
         if (objetoAnillo.gameObject.activeSelf) return;
  
+        // El agente solo detecta el pedestal vacio si esta dentro de su rango visual
         float distAlPedestal = Vector3.Distance(transform.position, posicionOriginalAnillo);
         if (distAlPedestal > rangoVision) return;
  
@@ -125,6 +149,7 @@ public class SensorVision : MonoBehaviour
         Vector3 forwardFlat = new Vector3(transform.forward.x, 0f, transform.forward.z).normalized;
         if (Vector3.Angle(forwardFlat, dirFlat) > anguloVision) return;
  
+        // Si no hay obstaculos hasta el pedestal, se informa de que el anillo desapareció
         if (!Physics.Raycast(posOjos, direccion, distAlPedestal, capasObstaculos))
         {
             anilloDesaparecidoNotificado = true;
@@ -134,11 +159,13 @@ public class SensorVision : MonoBehaviour
  
     public bool AnilloEnPedestal()
     {
+        // Metodo auxiliar para consultas directas sobre el estado del pedestal
         return objetoAnillo != null && objetoAnillo.gameObject.activeSelf;
     }
  
     void OnDrawGizmos()
     {
+        // Dibuja el cono en escena para ajustar rango y angulo desde el editor
         bool viendo = Application.isPlaying && ObjetivoEsVisible;
         Gizmos.color = viendo ? Color.red : Color.green;
  

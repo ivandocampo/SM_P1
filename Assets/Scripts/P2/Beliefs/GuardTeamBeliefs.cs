@@ -1,3 +1,10 @@
+// =============================================================
+// Fichero parcial de BeliefBase: creencias sobre el equipo de guardias.
+// Mantiene el estado reportado por cada compañero (posición, behavior,
+// disponibilidad, zona). Ofrece consultas de proximidad y candidatos
+// para roles tácticos (perseguidor, interceptor, bloqueador de salida)
+// =============================================================
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -5,17 +12,18 @@ using UnityEngine;
 
 public partial class BeliefBase
 {
-    /// <summary>Estados reportados por otros guardias.</summary>
+    /// Estados reportados por otros guardias
     public Dictionary<string, GuardStatus> EstadosOtrosGuardias { get; private set; }
         = new Dictionary<string, GuardStatus>();
 
-    /// <summary>Timestamps de la ultima actualizacion de cada guardia.</summary>
+    /// Timestamps de la ultima actualizacion de cada guardia
     private Dictionary<string, float> ultimaActualizacionGuardias =
         new Dictionary<string, float>();
 
-    /// <summary>Tiempo maximo sin actualizacion antes de considerar un guardia como stale.</summary>
+    /// Tiempo maximo sin actualizacion antes de considerar un guardia como stale
     private const float TIEMPO_STALE_GUARDIA = 30f;
 
+    // Registrar o actualizar el estado de un guardia conocido
     public void ActualizarEstadoGuardia(GuardStatus estado)
     {
         if (estado != null && !string.IsNullOrEmpty(estado.GuardId))
@@ -25,6 +33,7 @@ public partial class BeliefBase
         }
     }
 
+    // Actualizar la disponibilidad y opcionalmente el estado de un guardia por su ID
     public void ActualizarDisponibilidadGuardia(string guardId, bool disponible, string nuevoEstado = null)
     {
         if (string.IsNullOrEmpty(guardId)) return;
@@ -37,12 +46,14 @@ public partial class BeliefBase
         ultimaActualizacionGuardias[guardId] = Time.time;
     }
 
+    // Eliminar un guardia del equipo conocido (desconexión o destrucción)
     public void EliminarGuardia(string guardId)
     {
         EstadosOtrosGuardias.Remove(guardId);
         ultimaActualizacionGuardias.Remove(guardId);
     }
 
+    // Eliminar guardias cuya última actualización supera TIEMPO_STALE_GUARDIA segundos
     public void LimpiarGuardiasStale()
     {
         List<string> guardiasStale = new List<string>();
@@ -62,6 +73,7 @@ public partial class BeliefBase
         }
     }
 
+    // Contar cuántos guardias (incluido el propio) están en el estado indicado
     public int GuardiasEnEstado(BehaviorType estado)
     {
         int count = EstadoActual == estado ? 1 : 0;
@@ -76,6 +88,7 @@ public partial class BeliefBase
         return count;
     }
 
+    // Comprobar si algún compañero está vigilando el pedestal actualmente
     public bool AlguienGuardandoPedestal()
     {
         foreach (var par in EstadosOtrosGuardias)
@@ -89,10 +102,7 @@ public partial class BeliefBase
         return false;
     }
 
-    /// <summary>
-    /// Devuelve true si ningun otro guardia conocido esta mas cerca de la posicion dada.
-    /// Usado para decidir quien inicia el Contract-Net sin coordinacion centralizada.
-    /// </summary>
+    /// Devuelve true si ningun otro guardia conocido esta mas cerca de la posicion dada
     public bool SoyElMasCercanoA(Vector3 posicion)
     {
         float miDistancia = Vector3.Distance(MiPosicion, posicion);
@@ -101,6 +111,7 @@ public partial class BeliefBase
             if (par.Value.CurrentPosition == null) continue;
             float suDistancia = Vector3.Distance(par.Value.CurrentPosition.ToVector3(), posicion);
             bool estaMasCerca = suDistancia < miDistancia - 0.25f;
+            // Desempate lexicográfico: el ID menor gana si la diferencia de distancia es pequeña
             bool empataConMejorId = Mathf.Abs(suDistancia - miDistancia) <= 0.25f &&
                                     string.Compare(par.Key, MiId, StringComparison.Ordinal) < 0;
 
@@ -110,6 +121,7 @@ public partial class BeliefBase
         return true;
     }
 
+    // Comprobar si este guardia está entre los maxAgentes más cercanos a la posición dada
     public bool SoyEntreMasCercanosA(Vector3 posicion, int maxAgentes)
     {
         float miDistancia = Vector3.Distance(MiPosicion, posicion);
@@ -131,6 +143,7 @@ public partial class BeliefBase
         return mejores < maxAgentes;
     }
 
+    // Devolver los IDs de los maxAgentes guardias más cercanos, excluyendo los IDs indicados
     public List<string> ObtenerIdsMasCercanosA(Vector3 posicion, int maxAgentes, HashSet<string> excluir = null)
     {
         List<KeyValuePair<string, float>> candidatos = new List<KeyValuePair<string, float>>();
@@ -155,6 +168,7 @@ public partial class BeliefBase
             .ToList();
     }
 
+    // Devolver los IDs estables de bloqueadores de salida: prioriza los ya bloqueando, rellena con los más cercanos
     public HashSet<string> ObtenerIdsBloqueadoresSalidaEstables(int maxAgentes, bool excluirmeSiTengoContactoDirecto = false)
     {
         if (!TienePosicionSalida)
@@ -164,6 +178,7 @@ public partial class BeliefBase
         if (excluirmeSiTengoContactoDirecto)
             excluir.Add(MiId);
 
+        // Excluir a los guardias en persecución activa, que no pueden bloquear
         foreach (var par in EstadosOtrosGuardias)
         {
             if (par.Value.CurrentState == BehaviorType.Pursuit.ToString())
@@ -184,6 +199,7 @@ public partial class BeliefBase
                 actuales.Add(par.Key);
         }
 
+        // Ordenar por cercanía a la salida para escoger los mejores bloqueadores
         actuales = actuales
             .Distinct()
             .OrderBy(id => DistanciaGuardiaASalida(id))
@@ -194,6 +210,7 @@ public partial class BeliefBase
         if (actuales.Count >= maxAgentes)
             return new HashSet<string>(actuales);
 
+        // Completar con los más cercanos a la salida que no estén ya incluidos
         HashSet<string> excluirRelleno = new HashSet<string>(excluir);
         foreach (string id in actuales)
             excluirRelleno.Add(id);
@@ -203,6 +220,7 @@ public partial class BeliefBase
         return new HashSet<string>(actuales);
     }
 
+    // Obtener la distancia de un guardia a la posición de la salida
     private float DistanciaGuardiaASalida(string guardId)
     {
         if (guardId == MiId)
@@ -215,6 +233,7 @@ public partial class BeliefBase
         return float.MaxValue;
     }
 
+    // Comprobar si este guardia puede ser candidato a bloquear la salida
     public bool SoyEntreMasCercanosParaBloquearSalida(int maxAgentes, bool excluirmeSiTengoContactoDirecto)
     {
         if (!TienePosicionSalida)

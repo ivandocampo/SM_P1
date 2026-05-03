@@ -1,12 +1,24 @@
+// =============================================================
+// Fichero parcial de GuardAgent: visualización de debug en pantalla.
+// Dibuja un panel OnGUI con el estado de todos los guardias activos
+// (behavior, fase táctica y zona asignada) y esferas de colores
+// sobre cada guardia en la vista de escena para identificarlos a simple vista.
+// Solo el guardia con ID más bajo renderiza el panel para evitar duplicados
+// =============================================================
+
 using System.Collections.Generic;
 using UnityEngine;
 
 public partial class GuardAgent
 {
+    // Estilos GUI inicializados una sola vez y compartidos por todos los guardias
     private static GUIStyle estiloDebugPanel;
     private static GUIStyle estiloDebugTitulo;
+
+    // Lista estática compartida con todos los guardias registrados para el panel
     private static List<GuardAgent> guardiasDebug = new List<GuardAgent>();
 
+    // Asignar un color distinto a cada behavior para identificarlos visualmente
     private Color ColorPorBehavior(BehaviorType tipo)
     {
         switch (tipo)
@@ -22,6 +34,7 @@ public partial class GuardAgent
         }
     }
 
+    // Dibujar una esfera de color sobre el guardia en la vista de escena
     private void OnDrawGizmos()
     {
         if (!mostrarMarcadorDebug) return;
@@ -32,15 +45,18 @@ public partial class GuardAgent
         Gizmos.DrawLine(transform.position, centro);
     }
 
+    // Dibujar el panel de debug en pantalla con el estado de todos los guardias
     private void DibujarPanelDebug()
     {
         if (!mostrarDebugEnPantalla || guardiasDebug.Count == 0) return;
 
+        // Ordenar los guardias por ID; solo el primero dibuja el panel para evitar duplicados
         List<GuardAgent> ordenados = new List<GuardAgent>(guardiasDebug);
         ordenados.RemoveAll(g => g == null);
         ordenados.Sort((a, b) => string.Compare(a.agentId, b.agentId, System.StringComparison.Ordinal));
         if (ordenados.Count == 0 || ordenados[0] != this) return;
 
+        // Inicializar estilos GUI la primera vez que se dibuja el panel
         if (estiloDebugPanel == null)
         {
             estiloDebugPanel = new GUIStyle(GUI.skin.label)
@@ -69,6 +85,7 @@ public partial class GuardAgent
         float ancho = anchoPanelDebug;
         float alto = 34f + ordenados.Count * 23f;
 
+        // Dibujar el fondo semiopaco del panel
         Color anterior = GUI.color;
         GUI.color = new Color(0f, 0f, 0f, 0.95f);
         GUI.Box(new Rect(x, y, ancho, alto), GUIContent.none);
@@ -76,6 +93,7 @@ public partial class GuardAgent
 
         GUI.Label(new Rect(x + 10f, y + 6f, ancho - 20f, 22f), "DEBUG GUARDIAS", estiloDebugTitulo);
 
+        // Dibujar una fila por guardia con su behavior, fase táctica y zona asignada
         for (int i = 0; i < ordenados.Count; i++)
         {
             GuardAgent guardia = ordenados[i];
@@ -93,6 +111,7 @@ public partial class GuardAgent
         GUI.color = anterior;
     }
 
+    // Convertir la fase táctica a una cadena corta para el panel
     private static string AbreviarFase(TacticalPhase fase)
     {
         switch (fase)
@@ -106,6 +125,7 @@ public partial class GuardAgent
         }
     }
 
+    // Convertir el tipo de behavior a una cadena corta para el panel
     private static string AbreviarBehavior(BehaviorType tipo)
     {
         switch (tipo)
@@ -122,6 +142,7 @@ public partial class GuardAgent
         }
     }
 
+    // Extraer el número del ID del guardia para mostrarlo abreviado
     private static string AbreviarAgente(string id)
     {
         if (string.IsNullOrEmpty(id)) return "G?";

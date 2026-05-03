@@ -1,17 +1,23 @@
+// =============================================================
+// Fichero parcial de GuardAgent: capa de comunicación reactiva.
+// Consume los flags pendientes que activó la capa de percepción
+// y decide qué mensajes FIPA-ACL enviar ese frame al equipo.
+// Separa la percepción de la comunicación: los sensores nunca
+// llaman directamente a ProtocolHandler, solo activan flags
+// =============================================================
+
 using UnityEngine;
 
 public partial class GuardAgent
 {
-    // CAPA DE COMUNICACION REACTIVA
-    // Consume los flags pendientes y decide que mensajes FIPA enviar.
-
+    // Revisar los flags de comunicación pendiente y enviar los mensajes correspondientes
     private void GestionarComunicacionReactiva()
     {
-        // Avistamiento continuo del ladron: con throttle, forzado en primera deteccion.
+        // Informar avistamiento continuo del ladrón con throttle para no saturar el canal
         if (creencias.LadronVisible)
             InformarAvistamientoSiProcede();
 
-        // Ladron perdido de vista: comunicar al equipo e iniciar busqueda coordinada.
+        // Comunicar al equipo que el ladrón se perdió de vista e iniciar búsqueda coordinada
         if (creencias.PendienteComunicarLadronPerdido)
         {
             protocolHandler.InformarPredicado(PredicateType.THIEF_LOST);
@@ -24,14 +30,14 @@ public partial class GuardAgent
 
         GestionarBusquedaCoordinada(fase, faseContactoTactico);
 
-        // Anillo desaparecido del pedestal: alertar al equipo.
+        // Comunicar al equipo que el anillo ha desaparecido del pedestal
         if (creencias.PendienteComunicarAnilloDesaparecido)
         {
             protocolHandler.InformarPredicado(PredicateType.RING_STOLEN);
             creencias.PendienteComunicarAnilloDesaparecido = false;
         }
 
-        // Ladron visto portando el anillo: alertar al equipo con contexto adicional.
+        // Comunicar al equipo que se ha visto al ladrón portando el anillo
         if (creencias.PendienteComunicarLadronConAnillo)
         {
             protocolHandler.InformarPredicado(PredicateType.RING_STOLEN, GameConstants.PredicateExtras.SeenCarryingRing);
@@ -39,6 +45,7 @@ public partial class GuardAgent
         }
     }
 
+    // Enviar un informe de avistamiento al equipo
     private void InformarAvistamientoSiProcede()
     {
         bool forzar = creencias.PrimerAvistamiento;

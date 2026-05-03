@@ -1,39 +1,46 @@
+// =============================================================
+// Actuador de interacción del personaje Frodo (controlado por el jugador)
+//
+// En la práctica, Frodo puede recoger el Anillo del pedestal y usarlo
+// para volverse invisible a los sensores de visión de guardias y arañas.
+// Este script gestiona las dos consecuencias físicas de esas acciones:
+//   - Eliminar el anillo de la escena al ser recogido.
+//   - Cambiar la apariencia visual de Frodo para reflejar su invisibilidad
+//
+// Es llamado por CerebroFrodo cuando el jugador recoge el anillo o activa
+// el poder de invisibilidad con la barra espaciadora
+// =============================================================
+
 using UnityEngine;
 
 public class ActuadorInteraccionFrodo : MonoBehaviour
 {
     [Header("Objetivos")]
-    public Transform elAnillo;
+    public Transform elAnillo;          // Referencia al GameObject del Anillo en la escena
 
     [Header("Efecto Visual Anillo")]
-    public Renderer[] renderersFrodo;
-    public float alphaInvisible = 0.2f;
+    public Renderer[] renderersFrodo;   // Todos los Renderer del modelo de Frodo
+    public float alphaInvisible = 0.2f; // Transparencia aplicada al activar la invisibilidad
 
-    // Gestiona la recolección del anillo desactivando su presencia en la escena
+    // Desactivar el Anillo de la escena al ser recogido por Frodo
     public void CogerAnillo()
     {
-        // Verifica la existencia de la referencia antes de desactivar el objeto
         if (elAnillo != null)
             elAnillo.gameObject.SetActive(false);
     }
 
-    // Modifica la apariencia visual del personaje para reflejar su estado de visibilidad
+    // Aplicar o quitar la transparencia del modelo de Frodo al activar/desactivar el Anillo
     public void CambiarTransparencia(bool hacerInvisible)
     {
-        // Selecciona el valor de transparencia adecuado según el estado solicitado
         float valorAlpha = hacerInvisible ? alphaInvisible : 1f;
 
-        // Itera sobre todos los componentes visuales asignados al personaje
         foreach (Renderer rend in renderersFrodo)
         {
-            // Valida que el componente visual actual sea accesible
             if (rend != null)
             {
-                // Obtiene el color del material actual para ajustar su canal de opacidad
+                // Modificar solo el canal alpha, manteniendo el color original
                 Color colorActual = rend.material.color;
                 colorActual.a = valorAlpha;
-                
-                // Aplica el nuevo color con la transparencia actualizada al material
                 rend.material.color = colorActual;
             }
         }

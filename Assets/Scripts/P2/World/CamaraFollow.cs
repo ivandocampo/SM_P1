@@ -1,3 +1,10 @@
+// =============================================================
+// Camara de seguimiento de Frodo.
+// Mantiene la camara orientada hacia el jugador, permite rotacion y
+// zoom, y alterna entre vista normal y vista cenital. Actualiza su
+// posicion en LateUpdate para moverse despues del objetivo
+// =============================================================
+
 using UnityEngine;
 
 public class CamaraFollow : MonoBehaviour

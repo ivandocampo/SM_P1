@@ -1,3 +1,10 @@
+// =============================================================
+// Behavior de bloqueo de la salida del mapa.
+// Se activa cuando el anillo ha sido robado (fase RingStolen).
+// Si hay puntos de bloqueo configurados, los recorre en ciclo;
+// si no, se dirige directamente al transform de la salida
+// =============================================================
+
 using UnityEngine;
 
 [System.Serializable]
@@ -13,6 +20,7 @@ public class BlockExitBehavior : IBehavior
         this.puntosBloqueo = puntosBloqueo;
     }
 
+    // Ir al primer punto de bloqueo válido al iniciar; caer a la salida si no hay puntos
     public void Iniciar(BeliefBase creencias, ActuadorMovimiento actuador)
     {
         if (TienePuntosBloqueoValidos())
@@ -26,6 +34,7 @@ public class BlockExitBehavior : IBehavior
         }
     }
 
+    // Avanzar al siguiente punto de bloqueo al llegar al actual; nunca termina (devuelve false)
     public bool Ejecutar(BeliefBase creencias, ActuadorMovimiento actuador)
     {
         if (TienePuntosBloqueoValidos())
@@ -44,6 +53,7 @@ public class BlockExitBehavior : IBehavior
         return false;
     }
 
+    // Comprobar que existe al menos un punto de bloqueo no nulo en el array
     private bool TienePuntosBloqueoValidos()
     {
         if (puntosBloqueo == null || puntosBloqueo.Length == 0)
@@ -58,6 +68,7 @@ public class BlockExitBehavior : IBehavior
         return false;
     }
 
+    // Buscar el siguiente índice válido con wrap circular, saltando entradas nulas
     private int BuscarSiguientePuntoValido(int inicio)
     {
         for (int offset = 0; offset < puntosBloqueo.Length; offset++)

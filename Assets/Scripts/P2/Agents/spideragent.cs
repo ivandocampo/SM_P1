@@ -1,3 +1,12 @@
+// =============================================================
+// Agente araña: sensor estático del laberinto.
+// A diferencia de los orcos, la araña no tiene arquitectura BDI
+// ni se mueve. Su única función es observar y alertar: se suscribe
+// a los eventos de SensorVision y SensorOido y reenvía todo lo que
+// detecta a los guardias mediante mensajes FIPA-ACL INFORM en broadcast.
+// Actúa como cámara de seguridad del sistema multiagente
+// =============================================================
+
 using UnityEngine;
 
 
@@ -10,18 +19,16 @@ public class SpiderAgent : MonoBehaviour
     [Tooltip("Intervalo mínimo entre informes del mismo tipo (evita spam)")]
     public float cooldownInforme = 2f;
 
-    // === COMPONENTES ===
     private ComunicacionAgente comunicacion;
     private SensorVision sensorVision;
     private SensorOido sensorOido;
 
-    // === ESTADO ===
     private float ultimoInformeAvistamiento = -100f;
+    // Flag para no enviar RING_STOLEN más de una vez
     private bool anilloReportado = false;
 
     void Start()
     {
-        // Inicializar comunicación
         comunicacion = GetComponent<ComunicacionAgente>();
         if (comunicacion == null)
         {
@@ -30,11 +37,11 @@ public class SpiderAgent : MonoBehaviour
         }
         comunicacion.Inicializar(agentId, GameConstants.AgentTypes.Spider);
 
-        // Obtener sensores (puede tener uno o ambos)
+        // Obtener sensores; la araña puede tener visión, oído o ambos según la escena
         sensorVision = GetComponent<SensorVision>();
         sensorOido = GetComponent<SensorOido>();
 
-        // Suscribirse a los eventos de los sensores
+        // Suscribirse a los eventos de los sensores para reaccionar cuando detecten algo
         if (sensorVision != null)
         {
             sensorVision.OnObjetivoDetectado += ManejarObjetivoVisto;
@@ -55,13 +62,13 @@ public class SpiderAgent : MonoBehaviour
     {
         if (!GameManager.Instance.PartidaActiva) return;
 
-        // Procesar mensajes recibidos (las arañas pueden recibir QUERY de los guardias)
+        // Procesar mensajes entrantes; las arañas pueden recibir QUERY de los guardias
         comunicacion.ProcesarMensajes();
     }
 
+    // Desuscribirse de todos los eventos al destruir el objeto para evitar referencias nulas
     void OnDestroy()
     {
-        // Desuscribirse de los eventos
         if (sensorVision != null)
         {
             sensorVision.OnObjetivoDetectado -= ManejarObjetivoVisto;
@@ -74,28 +81,31 @@ public class SpiderAgent : MonoBehaviour
         {
             sensorOido.OnSonidoDetectado -= ManejarSonidoDetectado;
         }
-
     }
 
-    // MANEJADORES DE EVENTOS DE SENSORES
+    // Manejadores de eventos de sensores: cada uno delega en los métodos de comunicación
 
+    // Frodo pasa a ser visible: enviar informe inmediato sin throttle
     private void ManejarObjetivoVisto(Vector3 posicion)
     {
         EnviarInformeAvistamiento(posicion, true);
     }
 
+    // Frodo sigue visible: enviar informe con cooldown para no saturar el canal
     private void ManejarObjetivoVisible(Vector3 posicion)
     {
         if (Time.time - ultimoInformeAvistamiento >= cooldownInforme)
             EnviarInformeAvistamiento(posicion, true);
     }
 
+    // Frodo desaparece del campo de visión: notificar THIEF_LOST al equipo
     private void ManejarObjetivoPerdido()
     {
         BroadcastPredicado(PredicateType.THIEF_LOST);
         Debug.Log($"[{agentId}] Ladrón perdido de vista — informando a guardias");
     }
 
+    // El pedestal queda vacío: notificar RING_STOLEN una sola vez
     private void ManejarAnilloDesaparecido()
     {
         if (anilloReportado) return;
@@ -105,14 +115,14 @@ public class SpiderAgent : MonoBehaviour
         Debug.Log($"[{agentId}] ¡Anillo desaparecido del pedestal! — informando a guardias");
     }
 
+    // Frodo detectado por oído: enviar informe de posición con cooldown
     private void ManejarSonidoDetectado(Vector3 posicion)
     {
         if (Time.time - ultimoInformeAvistamiento >= cooldownInforme)
             EnviarInformeAvistamiento(posicion, false);
     }
 
-    // COMUNICACIÓN
-
+    // Construir y emitir en broadcast un ThiefSighting con la posición detectada
     private void EnviarInformeAvistamiento(Vector3 posicion, bool visionDirecta)
     {
         ultimoInformeAvistamiento = Time.time;
@@ -130,6 +140,7 @@ public class SpiderAgent : MonoBehaviour
         msg.Protocol = GameConstants.Protocols.Inform;
         comunicacion.Broadcast(msg);
 
+        // Si Frodo es visible portando el anillo, emitir también RING_STOLEN sin esperar al pedestal
         if (visionDirecta &&
             sensorVision != null &&
             sensorVision.ObjetivoVisibleConAnillo &&
@@ -144,6 +155,7 @@ public class SpiderAgent : MonoBehaviour
         Debug.Log($"[{agentId}] Ladrón {tipo} en {posicion} — informando a guardias");
     }
 
+    // Emitir en broadcast un predicado factual (THIEF_LOST, RING_STOLEN, etc.)
     private void BroadcastPredicado(PredicateType predicado)
     {
         ACLMessage msg = new ACLMessage(ACLPerformative.INFORM, agentId, "");

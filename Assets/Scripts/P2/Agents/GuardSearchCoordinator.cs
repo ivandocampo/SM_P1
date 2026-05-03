@@ -1,3 +1,12 @@
+// =============================================================
+// Fichero parcial de GuardAgent: coordinación de búsqueda distribuida.
+// Cuando el ladrón se pierde de vista, determina qué guardia es el
+// responsable de lanzar el Contract-Net y gestiona el retardo antes
+// de iniciar la ronda. El responsable es el guardia más cercano a la
+// última posición conocida; los empates se rompen por orden lexicográfico
+// de ID para evitar rondas duplicadas sin coordinador central
+// =============================================================
+
 using UnityEngine;
 
 public partial class GuardAgent
@@ -7,12 +16,16 @@ public partial class GuardAgent
 
     private const float RETARDO_BUSQUEDA_COORDINADA = BeliefBase.TIEMPO_INFO_TACTICA_LADRON;
     private const float DISTANCIA_MISMA_RONDA_BUSQUEDA = 10f;
+
+    // Variables estáticas compartidas por todos los guardias para evitar rondas duplicadas
     private static float ultimaRondaBusquedaCoordinada = -100f;
     private static Vector3 ultimaPosicionRondaBusqueda = Vector3.positiveInfinity;
     private static string responsableBusquedaCoordinada = "";
 
+    // Gestionar el flujo completo de la búsqueda coordinada: esperar, decidir responsable y lanzar Contract-Net
     private void GestionarBusquedaCoordinada(TacticalPhase fase, bool faseContactoTactico)
     {
+        // Activar búsqueda coordinada si llegó un informe externo de ladrón perdido
         if (!busquedaCoordinadaPendiente &&
             creencias.PendienteBusquedaCoordinadaPorInformeExterno &&
             (fase == TacticalPhase.RingSafeThiefLost ||
@@ -23,6 +36,7 @@ public partial class GuardAgent
             creencias.BuscarLocalAntesDeCoordinar = false;
         }
 
+        // En fase de contacto táctico, hacer una búsqueda local antes de coordinar con el equipo
         if (busquedaCoordinadaPendiente &&
             faseContactoTactico &&
             !creencias.BuscarLocalAntesDeCoordinar &&
@@ -38,6 +52,7 @@ public partial class GuardAgent
         {
             creencias.BuscarLocalAntesDeCoordinar = false;
 
+            // Si ya hay una ronda activa cerca de la misma posición, unirse sin lanzar otra
             if (EsMismaRondaBusquedaCoordinada())
             {
                 creencias.ComprobarPedestalTrasBusquedaLocal = false;
@@ -46,12 +61,14 @@ public partial class GuardAgent
             }
             else if (SoyResponsableDeBusquedaCoordinada())
             {
+                // Este guardia es el responsable: lanzar el Contract-Net
                 bool contratoLanzado = contractNetManager.IniciarDistribucionBusqueda();
                 if (contratoLanzado)
                 {
                     ultimaRondaBusquedaCoordinada = Time.time;
                     ultimaPosicionRondaBusqueda = creencias.UltimaPosicionLadron;
 
+                    // Si el anillo sigue seguro, el responsable va a comprobar el pedestal
                     if (!creencias.AnilloRobado)
                     {
                         responsableBusquedaCoordinada = "";
@@ -66,6 +83,7 @@ public partial class GuardAgent
                 }
                 else
                 {
+                    // El Contract-Net no pudo lanzarse; reintentar en el siguiente frame
                     responsableBusquedaCoordinada = "";
                     busquedaCoordinadaPendiente = true;
                     tiempoPerdidaLadron = Time.time - BeliefBase.TIEMPO_INFO_TACTICA_LADRON;
@@ -79,6 +97,7 @@ public partial class GuardAgent
         }
     }
 
+    // Marcar este guardia como candidato a responsable cuando detecta que el ladrón se perdió
     private void ReclamarResponsabilidadBusquedaCoordinada()
     {
         if (creencias.AnilloRobado) return;
@@ -89,12 +108,14 @@ public partial class GuardAgent
         busquedaCoordinadaPendiente = true;
     }
 
+    // Comprobar si ya existe una ronda de búsqueda activa cercana a la posición actual del ladrón
     private bool EsMismaRondaBusquedaCoordinada()
     {
         return Time.time - ultimaRondaBusquedaCoordinada < RETARDO_BUSQUEDA_COORDINADA &&
                Vector3.Distance(ultimaPosicionRondaBusqueda, creencias.UltimaPosicionLadron) < DISTANCIA_MISMA_RONDA_BUSQUEDA;
     }
 
+    // Determinar si este guardia debe ser el iniciador del Contract-Net
     private bool SoyResponsableDeBusquedaCoordinada()
     {
         if (string.IsNullOrEmpty(responsableBusquedaCoordinada) ||
@@ -106,6 +127,7 @@ public partial class GuardAgent
         return responsableBusquedaCoordinada == agentId;
     }
 
+    // Verificar que el responsable previamente elegido sigue teniendo la búsqueda pendiente
     private bool ResponsableBusquedaSigueValido(string responsableId)
     {
         if (string.IsNullOrEmpty(responsableId))
@@ -122,6 +144,8 @@ public partial class GuardAgent
         return guardiaResponsable != null && guardiaResponsable.busquedaCoordinadaPendiente;
     }
 
+    // Elegir el guardia más cercano a la última posición del ladrón como responsable del Contract-Net
+    // En caso de empate de distancia, se desempata por orden lexicográfico del ID
     private string CalcularResponsableBusquedaCoordinada()
     {
         string mejorId = agentId;

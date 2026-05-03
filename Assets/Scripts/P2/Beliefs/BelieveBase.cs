@@ -1,3 +1,11 @@
+// =============================================================
+// Base de creencias del guardia BDI.
+// Guarda lo que el agente sabe sobre Frodo, el anillo, su propio
+// estado, las tareas aceptadas y los eventos pendientes de comunicar.
+// Esta clase es parcial: GuardTeamBeliefs y SearchZoneBeliefs amplian
+// la informacion de equipo y de zonas de busqueda
+// =============================================================
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,80 +23,63 @@ public enum TacticalPhase
 [System.Serializable]
 public partial class BeliefBase
 {
+    // Ventanas de tiempo que separan informacion reciente, investigable y caducada.
     public const float TIEMPO_INFO_TACTICA_LADRON = TacticalConfig.ThiefInfoRecentSeconds;
     public const float TIEMPO_INVESTIGACION_LADRON = TacticalConfig.ThiefInvestigationSeconds;
     public const float TIEMPO_GRACIA_PERDIDA_LADRON = TacticalConfig.LostGraceSeconds;
 
-    // CREENCIAS SOBRE EL LADRÓN
+    // Creencias sobre Frodo
 
-    /// <summary>Si el ladrón es visible en este momento (por sensores propios).</summary>
     public bool LadronVisible { get; private set; } = false;
 
-    /// <summary>Última posición conocida del ladrón (vista u oída, propia o reportada).</summary>
     public Vector3 UltimaPosicionLadron { get; private set; } = Vector3.zero;
 
-    /// <summary>Timestamp de la última detección del ladrón.</summary>
     public float TiempoUltimaDeteccion { get; private set; } = -100f;
 
-    /// <summary>Si la última detección fue por visión directa (true) u oído/reporte (false).</summary>
     public bool UltimaDeteccionDirecta { get; private set; } = false;
 
-    /// <summary>ID del agente que reportó la última posición (puede ser el propio).</summary>
     public string FuenteUltimaDeteccion { get; private set; } = "";
 
-    /// <summary>Si tenemos información reciente sobre el ladrón (menos de maxAge segundos).</summary>
     public bool TieneInfoReciente(float maxAge = 10f)
     {
         return (Time.time - TiempoUltimaDeteccion) < maxAge;
     }
 
-    /// <summary>Antigüedad en segundos de la última información sobre el ladrón.</summary>
     public float AntiguedadInfoLadron => Time.time - TiempoUltimaDeteccion;
 
-    /// <summary>Si la última detección reciente procede de un sensor propio, no de un mensaje.</summary>
     public bool TieneDeteccionPropiaReciente(float maxAge = 8f)
     {
         return FuenteUltimaDeteccion == MiId && TieneInfoReciente(maxAge);
     }
 
-    /// <summary>Dirección más reciente conocida del ladrón.</summary>
     public Vector3 UltimaDireccionLadron { get; private set; } = Vector3.zero;
 
     public bool TieneDireccionLadron { get; private set; } = false;
 
-    // CREENCIAS SOBRE EL ANILLO
+    // Creencias sobre el anillo
 
-    /// <summary>Si se sabe que el anillo ha sido robado.</summary>
     public bool AnilloRobado { get; private set; } = false;
 
-    /// <summary>Timestamp de cuando se supo que el anillo fue robado.</summary>
     public float TiempoAnilloRobado { get; private set; } = -100f;
 
-    /// <summary>Si algún guardia ha visto directamente al ladrón llevando el anillo.</summary>
     public bool LadronVistoConAnillo { get; private set; } = false;
 
-    // CREENCIAS SOBRE EL PROPIO AGENTE
+    // Creencias sobre el propio guardia
 
-    /// <summary>ID del propio agente.</summary>
     public string MiId { get; private set; }
 
-    /// <summary>Posición actual del agente (actualizada cada frame).</summary>
     public Vector3 MiPosicion { get; set; }
 
-    /// <summary>Posición del pedestal, conocida por el propio agente.</summary>
     public Vector3 PosicionPedestal { get; set; } = Vector3.zero;
 
     public bool TienePosicionPedestal { get; set; } = false;
 
-    /// <summary>Posición de la salida del mapa, conocida por el propio agente.</summary>
     public Vector3 PosicionSalida { get; set; } = Vector3.zero;
 
     public bool TienePosicionSalida { get; set; } = false;
 
-    /// <summary>Nombre de la intención/estado actual.</summary>
     public BehaviorType EstadoActual { get; set; } = BehaviorType.None;
 
-    /// <summary>Si el agente está disponible para aceptar tareas.</summary>
     public bool Disponible => EstadoActual == BehaviorType.Patrol || EstadoActual == BehaviorType.None;
 
     public bool DebeComprobarPedestal { get; set; } = false;
@@ -97,74 +88,54 @@ public bool BuscarLocalAntesDeCoordinar { get; set; } = false;
     public bool ComprobarPedestalTrasBusquedaLocal { get; set; } = false;
     public float UltimoChequeoPedestal { get; private set; } = -100f;
 
-    // EVENTOS DE COMUNICACIÓN PENDIENTES
-    // La capa de percepción (sensores) los activa al detectar cambios relevantes.
-    // La capa de comunicación (GestionarComunicacionReactiva en GuardAgent) los
-    // consume cada frame, desacoplando ambas capas: añadir un nuevo sensor solo
-    // requiere actualizar creencias y activar el flag correspondiente.
+    // Eventos de comunicacion pendientes
 
-    /// <summary>El ladrón acaba de perderse de vista — comunicar THIEF_LOST e iniciar búsqueda coordinada.</summary>
     public bool PendienteComunicarLadronPerdido { get; set; } = false;
 
-    /// <summary>El pedestal del anillo está vacío — comunicar RING_STOLEN al equipo.</summary>
     public bool PendienteComunicarAnilloDesaparecido { get; set; } = false;
 
-    /// <summary>Se ha visto al ladrón portando el anillo — comunicar RING_STOLEN con contexto adicional.</summary>
     public bool PendienteComunicarLadronConAnillo { get; set; } = false;
 
     public bool PendienteBusquedaCoordinadaPorInformeExterno { get; set; } = false;
 
-    /// <summary>Primera detección del ladrón en este ciclo — forzar avistamiento inmediato sin throttle.</summary>
     public bool PrimerAvistamiento { get; set; } = false;
 
-    /// <summary>
-    /// Se ha producido un cambio de creencias relevante que puede alterar la intención óptima
-    /// (tarea asignada vía Contract-Net, anillo robado recibido por mensaje...).
-    /// GuardAgent lo consume para forzar una ronda de deliberación inmediata.
-    /// </summary>
     public bool NecesitaDeliberar { get; set; } = false;
 
-    // TAREAS ASIGNADAS
+    // Tareas asignadas por Contract-Net
 
-    /// <summary>Tarea de búsqueda asignada vía Contract Net.</summary>
     public SearchTask TareaAsignada { get; private set; } = null;
 
-    /// <summary>Si hay una tarea asignada pendiente de ejecutar.</summary>
     public bool TieneTareaAsignada => TareaAsignada != null;
 
-    /// <summary>ID de la conversación de la tarea asignada (para INFORM_DONE).</summary>
     public string ConversacionTareaAsignada { get; private set; } = "";
 
-    /// <summary>ID del agente que nos asignó la tarea.</summary>
     public string AsignadorTarea { get; private set; } = "";
 
     public int VersionTareaAsignada { get; private set; } = 0;
 
-    // REQUEST PENDIENTES
+    // REQUEST aceptados
 
-    /// <summary>Solicitud de acción recibida vía REQUEST que aceptamos.</summary>
     public ActionRequest RequestAceptado { get; private set; } = null;
 
-    /// <summary>Si hay un REQUEST aceptado pendiente.</summary>
     public bool TieneRequestPendiente => RequestAceptado != null;
 
     public string ConversacionRequest { get; private set; } = "";
     public string SolicitanteRequest { get; private set; } = "";
 
-    // CONSTRUCTOR
+    // Construcción
 
     public BeliefBase(string agentId)
     {
         MiId = agentId;
     }
 
-    // ACTUALIZACIONES — Llamadas desde el GuardAgent
+    // Actualizaciones llamadas desde GuardAgent y sensores
 
-    
     public void ActualizarPosicionLadron(Vector3 posicion, float timestamp,
         bool visionDirecta, string fuente, Vector3 direccion = default(Vector3), bool tieneDireccion = false)
     {
-        // Solo aceptar información más reciente
+        // Evita que un mensaje antiguo sobreescriba una deteccion mas nueva
         if (timestamp <= TiempoUltimaDeteccion) return;
 
         UltimaPosicionLadron = posicion;
@@ -178,33 +149,28 @@ public bool BuscarLocalAntesDeCoordinar { get; set; } = false;
             TieneDireccionLadron = true;
         }
 
-        // Solo marcar como visible si es visión directa propia
+        // Solo se marca visible si la deteccion directa procede de este guardia
         if (visionDirecta && fuente == MiId)
             LadronVisible = true;
     }
 
-    
     public void MarcarLadronPerdido()
     {
         LadronVisible = false;
         NecesitaDeliberar = true;
     }
 
-    
     public void MarcarAnilloRobado()
     {
         if (!AnilloRobado)
         {
             AnilloRobado = true;
             TiempoAnilloRobado = Time.time;
-            // El robo cambia el escenario radicalmente: las zonas exit pasan a ser
-            // las únicas relevantes, así que el tracking previo de zonas generales
-            // ya no aporta y conviene partir de cero.
+            // Al cambiar el objetivo tactico hacia la salida, las zonas previas dejan de servir
             ultimaBusquedaPorZona.Clear();
-            NecesitaDeliberar = true; // BlockExit(95) entra en juego
+            NecesitaDeliberar = true;
         }
     }
-
 
     public void RegistrarChequeoPedestal()
     {
@@ -214,14 +180,13 @@ public bool BuscarLocalAntesDeCoordinar { get; set; } = false;
         PendienteBusquedaCoordinadaPorInformeExterno = false;
     }
 
-
     public void MarcarLadronConAnillo()
     {
         LadronVistoConAnillo = true;
         MarcarAnilloRobado();
     }
 
-    
+    // Resume el estado del mundo en una fase tactica
     public TacticalPhase FaseActual()
     {
         if (AnilloRobado)
@@ -240,6 +205,7 @@ public bool BuscarLocalAntesDeCoordinar { get; set; } = false;
 
     public void DescartarHipotesisLadronCaducada()
     {
+        // Cuando la informacion sobre Frodo caduca del todo, se vuelve a un estado limpio
         LadronVisible = false;
         UltimaDeteccionDirecta = false;
         FuenteUltimaDeteccion = "";
@@ -256,9 +222,11 @@ public bool BuscarLocalAntesDeCoordinar { get; set; } = false;
 
     public Vector3 ObjetivoCriticoActual()
     {
+        // Si Frodo robo el anillo, el objetivo critico pasa a ser la salida
         if (AnilloRobado && TienePosicionSalida)
             return PosicionSalida;
 
+        // Si el anillo sigue seguro, el punto critico es el pedestal
         if (!AnilloRobado && TienePosicionPedestal)
             return PosicionPedestal;
 
@@ -272,6 +240,7 @@ public bool BuscarLocalAntesDeCoordinar { get; set; } = false;
 
     public int CarrilInterceptacion()
     {
+        // Ordena los guardias activos para repartir carriles laterales de forma estable
         List<string> guardiasActivos = EstadosOtrosGuardias
             .Where(par => par.Value.CurrentState == BehaviorType.Intercept.ToString() ||
                           par.Value.CurrentState == BehaviorType.Pursuit.ToString())
@@ -295,6 +264,7 @@ public bool BuscarLocalAntesDeCoordinar { get; set; } = false;
 
     public Vector3 CalcularPuntoInterceptacion(int carril, float distanciaAdelante = 6f, float distanciaLateral = 4f)
     {
+        // Con el anillo seguro interesa cerrar sobre Frodo; en otras fases se corta su ruta
         if (FaseActual() == TacticalPhase.RingSafeThiefKnown)
             return CalcularPuntoCierreSobreLadron(carril, distanciaAdelante, distanciaLateral);
 
@@ -303,6 +273,7 @@ public bool BuscarLocalAntesDeCoordinar { get; set; } = false;
 
     private Vector3 CalcularPuntoCierreSobreLadron(int carril, float distanciaAdelante, float distanciaLateral)
     {
+        // Usa la direccion conocida de Frodo; si no existe, aproxima desde la posicion del guardia
         Vector3 direccionCierre = TieneDireccionLadron
             ? UltimaDireccionLadron
             : (UltimaPosicionLadron - MiPosicion);
@@ -321,6 +292,7 @@ public bool BuscarLocalAntesDeCoordinar { get; set; } = false;
 
     private Vector3 CalcularPuntoCorteRuta(int carril, float distanciaAdelante, float distanciaLateral)
     {
+        // Calcula la linea probable entre Frodo y su objetivo critico
         Vector3 objetivo = ObjetivoCriticoActual();
         Vector3 direccionObjetivo = objetivo - UltimaPosicionLadron;
         direccionObjetivo.y = 0f;
@@ -346,14 +318,14 @@ public bool BuscarLocalAntesDeCoordinar { get; set; } = false;
 
     public void AsignarTarea(SearchTask tarea, string conversacionId, string asignador)
     {
+        // La reserva global evita que dos guardias hagan la misma zona a la vez
         TareaAsignada = tarea;
         ConversacionTareaAsignada = conversacionId;
         AsignadorTarea = asignador;
         ReservarZonaGlobal(tarea?.ZoneId);
         VersionTareaAsignada++;
-        NecesitaDeliberar = true; // SearchAssigned(85) entra en juego
+        NecesitaDeliberar = true;
     }
-
 
     public void LimpiarTarea()
     {
@@ -362,7 +334,6 @@ public bool BuscarLocalAntesDeCoordinar { get; set; } = false;
         ConversacionTareaAsignada = "";
         AsignadorTarea = "";
     }
-
 
     public void AceptarRequest(ActionRequest request, string conversacionId, string solicitante)
     {
@@ -378,9 +349,7 @@ public bool BuscarLocalAntesDeCoordinar { get; set; } = false;
         SolicitanteRequest = "";
     }
 
-    // CONSULTAS DE ALTO NIVEL
-
-    
+    // Distancia estimada desde este guardia hasta la ultima posicion conocida de Frodo
     public float DistanciaEstimadaAlLadron()
     {
         return Vector3.Distance(MiPosicion, UltimaPosicionLadron);

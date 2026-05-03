@@ -1,3 +1,9 @@
+// =============================================================
+// Behavior de patrulla cíclica entre waypoints.
+// Estado por defecto del guardia cuando no hay amenaza activa.
+// Recorre los puntos en orden circular a velocidad de patrulla
+// =============================================================
+
 using UnityEngine;
 
 [System.Serializable]
@@ -11,12 +17,14 @@ public class PatrolBehavior : IBehavior
         puntosPatrulla = puntos;
     }
 
+    // Enviar al guardia al primer waypoint al activar la patrulla
     public void Iniciar(BeliefBase creencias, ActuadorMovimiento actuador)
     {
         if (puntosPatrulla == null || puntosPatrulla.Length == 0) return;
         actuador.SetDestino(puntosPatrulla[indiceActual].position, TipoVelocidad.Patrulla);
     }
 
+    // Avanzar al siguiente waypoint cuando se llega al actual; nunca termina (devuelve false)
     public bool Ejecutar(BeliefBase creencias, ActuadorMovimiento actuador)
     {
         if (puntosPatrulla == null || puntosPatrulla.Length == 0) return false;
@@ -32,6 +40,6 @@ public class PatrolBehavior : IBehavior
 
     public void Detener(ActuadorMovimiento actuador)
     {
-        // No detenemos al agente; simplemente dejara de ir al siguiente waypoint.
+        // No detenemos al agente; simplemente dejara de ir al siguiente waypoint
     }
 }

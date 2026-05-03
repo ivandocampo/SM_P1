@@ -1,3 +1,11 @@
+// =============================================================
+// Gestor global del estado de la partida.
+// Controla si la partida sigue activa, muestra la pantalla de victoria
+// cuando Frodo escapa y reinicia la escena cuando es capturado.
+// Se expone como singleton para que otros scripts puedan notificar
+// eventos principales de juego
+// =============================================================
+
 using UnityEngine;
 using UnityEngine.SceneManagement;
 

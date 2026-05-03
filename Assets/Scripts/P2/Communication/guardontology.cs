@@ -1,3 +1,11 @@
+// =============================================================
+// Ontologia compartida por los mensajes de comunicacion.
+// Define las estructuras serializables que viajan en ACLMessage.Content:
+// posiciones, avistamientos, tareas de busqueda, estados de guardia,
+// propuestas, predicados factuales y solicitudes de accion. Estas clases
+// son el vocabulario comun que entienden los agentes del sistema
+// =============================================================
+
 using UnityEngine;
 
 
@@ -98,7 +106,7 @@ public class PredicateInfo
     public string ExtraData;        // Datos opcionales serializados
 }
 
-// ACCIONES — Tipos de acciones solicitables vía REQUEST
+// Tipos de acciones solicitables vía REQUEST
 
 
 public enum ActionType

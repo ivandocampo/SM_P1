@@ -1,3 +1,11 @@
+// =============================================================
+// Fichero parcial de BeliefBase: gestión de zonas de búsqueda.
+// Registra los waypoints de cada zona, rastrea cuándo se barrió
+// por última vez y ofrece lógica de selección de zona libre.
+// Las reservas globales (diccionario estático) evitan que dos
+// guardias reclamen la misma zona simultáneamente sin coordinador central
+// =============================================================
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -5,15 +13,18 @@ using UnityEngine;
 
 public partial class BeliefBase
 {
+    // Mapa de zona: array de puntos registrados para esa zona
     private Dictionary<string, Vector3[]> zonasBusquedaRegistradas =
         new Dictionary<string, Vector3[]>();
 
-    /// <summary>Timestamp de la ultima vez que el propio agente termino de buscar en cada zona.</summary>
+    /// Timestamp de la ultima vez que el propio agente termino de buscar en cada zona
     private Dictionary<string, float> ultimaBusquedaPorZona = new Dictionary<string, float>();
 
+    // Reservas globales compartidas entre todas las instancias para evitar solapamiento de zonas
     private static Dictionary<string, string> reservasZonaGlobales =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+    // Registrar los puntos de una zona de búsqueda para uso posterior por SearchAssignedBehavior
     public void RegistrarZonaBusqueda(string zoneId, Vector3[] puntos)
     {
         if (string.IsNullOrEmpty(zoneId) || puntos == null || puntos.Length == 0) return;
@@ -21,17 +32,20 @@ public partial class BeliefBase
         zonasBusquedaRegistradas[zoneId] = puntos;
     }
 
+    // Devolver los puntos registrados de una zona, o null si no existe
     public Vector3[] ObtenerPuntosZona(string zoneId)
     {
         if (string.IsNullOrEmpty(zoneId)) return null;
         return zonasBusquedaRegistradas.TryGetValue(zoneId, out Vector3[] puntos) ? puntos : null;
     }
 
+    // Devolver todos los IDs de zonas registradas
     public List<string> ObtenerIdsZonasBusqueda()
     {
         return new List<string>(zonasBusquedaRegistradas.Keys);
     }
 
+    // Calcular el centroide de los puntos de una zona para usarlo como referencia de distancia
     public Vector3 ObtenerCentroZona(string zoneId)
     {
         Vector3[] puntos = ObtenerPuntosZona(zoneId);
@@ -44,23 +58,20 @@ public partial class BeliefBase
         return centro / puntos.Length;
     }
 
-    /// <summary>Marca la zona como recien barrida por este agente.</summary>
+    /// Marca la zona como recien barrida por este agente
     public void RegistrarBusquedaCompletada(string zoneId)
     {
         if (!string.IsNullOrEmpty(zoneId))
             ultimaBusquedaPorZona[zoneId] = Time.time;
     }
 
-    /// <summary>
-    /// Devuelve el timestamp de la ultima busqueda completa de la zona, o un valor
-    /// muy bajo si nunca se busco. Permite priorizar zonas no rastreadas recientemente.
-    /// </summary>
+    /// Devuelve el timestamp de la ultima busqueda completa de la zona
     public float ObtenerTiempoUltimaBusqueda(string zoneId)
     {
         return ultimaBusquedaPorZona.TryGetValue(zoneId, out float t) ? t : -100f;
     }
 
-    /// <summary>Conjunto de zonas que otros guardias declaran cubrir actualmente.</summary>
+    /// Conjunto de zonas que otros guardias declaran cubrir actualmente
     public HashSet<string> ObtenerZonasCubiertasPorOtros()
     {
         HashSet<string> cubiertas = new HashSet<string>();
@@ -71,6 +82,7 @@ public partial class BeliefBase
                 cubiertas.Add(zona);
         }
 
+        // Incluir también las reservas estáticas de otros guardias
         foreach (var reserva in reservasZonaGlobales)
         {
             if (reserva.Value != MiId)
@@ -80,6 +92,7 @@ public partial class BeliefBase
         return cubiertas;
     }
 
+    // Comprobar si otro guardia ya ha reclamado la zona mediante reserva global
     public bool ZonaReservadaPorOtro(string zoneId)
     {
         if (string.IsNullOrWhiteSpace(zoneId))
@@ -89,6 +102,7 @@ public partial class BeliefBase
                ownerId != MiId;
     }
 
+    // Registrar la zona como propia en el diccionario estático global
     private void ReservarZonaGlobal(string zoneId)
     {
         if (string.IsNullOrWhiteSpace(zoneId))
@@ -97,6 +111,7 @@ public partial class BeliefBase
         reservasZonaGlobales[zoneId.Trim()] = MiId;
     }
 
+    // Liberar la reserva de la zona solo si este agente era su dueño
     private void LiberarReservaZonaGlobal(string zoneId)
     {
         if (string.IsNullOrWhiteSpace(zoneId))
@@ -110,11 +125,8 @@ public partial class BeliefBase
         }
     }
 
-    /// <summary>
-    /// Devuelve una zona que ningun otro guardia este cubriendo, priorizando
-    /// las que llevan mas tiempo sin barrer y, en caso de empate, las mas cercanas.
-    /// Si soloExit=true filtra a zonas Exit_*; si no hay disponibles cae a todas.
-    /// </summary>
+    /// Devuelve una zona que ningun otro guardia este cubriendo
+    /// Prioriza las que llevan mas tiempo sin barrer y, en caso de empate, las mas cercanas
     public string ObtenerZonaSinCubrir(bool soloExit)
     {
         HashSet<string> cubiertas = ObtenerZonasCubiertasPorOtros();
@@ -136,6 +148,7 @@ public partial class BeliefBase
             .FirstOrDefault();
     }
 
+    // Devolver la siguiente zona Exit en orden circular tras la zona actual
     public string ObtenerSiguienteZonaExitSecuencial(string zonaActual)
     {
         List<string> zonasExit = ObtenerZonasExitOrdenadas();
@@ -154,6 +167,7 @@ public partial class BeliefBase
         return ObtenerZonaExitPorRol();
     }
 
+    // Devolver la siguiente zona Exit no cubierta; caer a la secuencial si todas están cubiertas
     public string ObtenerSiguienteZonaExitSecuencialSinCubrir(string zonaActual)
     {
         List<string> zonasExit = ObtenerZonasExitOrdenadas();
@@ -171,6 +185,7 @@ public partial class BeliefBase
         return ObtenerSiguienteZonaExitSecuencial(zonaActual);
     }
 
+    // Buscar la siguiente zona de la lista que no esté en el conjunto excluir
     private string ObtenerSiguienteZonaDesdeLista(List<string> zonasExit, string zonaActual, HashSet<string> excluir)
     {
         int inicio = 0;
@@ -192,6 +207,7 @@ public partial class BeliefBase
         return "";
     }
 
+    // Asignar zona Exit a este guardia según su posición ordinal entre los no-bloqueadores
     private string ObtenerZonaExitPorRol()
     {
         List<string> zonasExit = ObtenerZonasExitOrdenadas();
@@ -213,6 +229,7 @@ public partial class BeliefBase
         return zonasExit[indice % zonasExit.Count];
     }
 
+    // Devolver las zonas Exit_ ordenadas numéricamente para recorrido secuencial consistente
     private List<string> ObtenerZonasExitOrdenadas()
     {
         return ObtenerIdsZonasBusqueda()
@@ -223,6 +240,7 @@ public partial class BeliefBase
             .ToList();
     }
 
+    // Extraer el número al final del ID de zona para ordenación numérica correcta
     private int ExtraerNumeroZona(string zoneId)
     {
         int numero = 0;

@@ -1,3 +1,10 @@
+// =============================================================
+// Puerta interactiva del laberinto.
+// Detecta cuando Frodo esta cerca y permite abrir o cerrar la puerta
+// con la tecla de interaccion. La apertura se realiza rotando el objeto
+// padre de forma progresiva hacia el angulo objetivo
+// =============================================================
+
 using UnityEngine;
 
 public class PuertaInteractiva : MonoBehaviour

@@ -1,14 +1,13 @@
+// =============================================================
+// Sensor de audicion usado por guardias y aranas.
+// Comprueba si Frodo esta dentro del rango de sonido al caminar o
+// correr y notifica la posicion detectada mediante eventos C#.
+// Incluye un intervalo minimo entre avisos para evitar spam de eventos
+// =============================================================
+
 using UnityEngine;
 using System;
 
-/// <summary>
-/// Sensor de audición event-driven para agentes (guardias y arañas).
-/// Detecta sonidos producidos por el ladrón (caminar y correr)
-/// y notifica al cerebro del agente mediante eventos C#.
-/// 
-/// Eventos disponibles:
-///   OnSonidoDetectado(Vector3 posición) — Se ha oído al ladrón
-/// </summary>
 public class SensorOido : MonoBehaviour
 {
     [Header("Configuración de Audición")]
@@ -20,7 +19,6 @@ public class SensorOido : MonoBehaviour
     [Tooltip("Intervalo mínimo entre notificaciones de sonido (evita spam de eventos)")]
     public float intervaloNotificacion = 0.5f;
 
-    // === EVENTOS ===
     public event Action<Vector3> OnSonidoDetectado;
 
     private CerebroFrodo cerebroFrodo;

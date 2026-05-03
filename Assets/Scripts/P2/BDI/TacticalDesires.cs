@@ -1,22 +1,29 @@
+// =============================================================
+// Fichero parcial de DesireGenerator: deseos tácticos principales.
+// Genera los deseos de persecución (Pursuit), intercepción (Intercept),
+// bloqueo de salida (BlockExit) y fallback defensivo. Aplica límites
+// de coordinación: solo el guardia con detección propia persigue;
+// los demás se organizan como interceptores o bloqueadores.
+// =============================================================
+
 using System.Collections.Generic;
 using UnityEngine;
 
 public partial class DesireGenerator
 {
+    // Generar deseo de persecución directa; solo para el guardia con detección propia reciente
     private void AgregarPersecucionSiProcede(List<Desire> deseos, TacticalPhase fase)
     {
         if (fase != TacticalPhase.RingSafeThiefKnown &&
             fase != TacticalPhase.RingStolenThiefKnown)
             return;
 
-        // Solo el guardia que tuvo deteccion propia reciente debe perseguir directamente.
-        // Los guardias que conocen la posicion por comunicacion se organizan como
-        // interceptores, bloqueadores o buscadores para evitar persecuciones redundantes.
+        // Solo el guardia que vio a Frodo directamente persigue;
+        // los que reciben la posición por mensaje se convierten en interceptores o bloqueadores
         if (!creencias.TieneDeteccionPropiaReciente())
             return;
 
-        // Si ya entramos en busqueda local (1.5s sin visual), abandonamos Pursuit
-        // para que el pursuer transicione a Search igual que hacen los interceptores.
+        // Si ya se inició la búsqueda local (1.5 s sin visual), transicionar a Search
         if (creencias.BuscarLocalAntesDeCoordinar)
             return;
 
@@ -40,11 +47,13 @@ public partial class DesireGenerator
         ));
     }
 
+    // Generar deseo de intercepción; el punto de corte varía según la fase táctica
     private void AgregarIntercepcionSiProcede(List<Desire> deseos, TacticalPhase fase)
     {
         TacticalPhasePolicy politica = ObtenerPoliticaDeFase(fase);
         int maxInterceptores;
 
+        // Calcular el número máximo de interceptores según la fase
         switch (fase)
         {
             case TacticalPhase.RingSafeThiefKnown:
@@ -77,6 +86,7 @@ public partial class DesireGenerator
         if (!faseConLadronLocalizado && !creencias.TieneObjetivoCriticoActual())
             return;
 
+        // Calcular el punto de referencia para elegir candidatos interceptores
         Vector3 referenciaSeleccion = faseConLadronLocalizado
             ? creencias.UltimaPosicionLadron
             : creencias.CalcularPuntoInterceptacion(0);
@@ -96,6 +106,7 @@ public partial class DesireGenerator
             return;
         }
 
+        // Respetar el límite de interceptores simultáneos
         if (faseConLadronLocalizado &&
             !soyInterceptorActual &&
             creencias.GuardiasEnEstado(BehaviorType.Intercept) >= maxInterceptores)
@@ -114,6 +125,7 @@ public partial class DesireGenerator
         ));
     }
 
+    // Generar deseo de bloqueo de salida cuando el anillo ha sido robado
     private void AgregarBloqueoSalidaSiProcede(List<Desire> deseos, TacticalPhase fase)
     {
         if (!creencias.AnilloRobado) return;
@@ -130,9 +142,7 @@ public partial class DesireGenerator
         bool hayExcesoBloqueadores = creencias.GuardiasEnEstado(BehaviorType.BlockExit) >
                                      politica.MaxBloqueadoresSalida;
 
-        // Sticky: si ya estoy bloqueando, mantengo BlockExit aunque me haya alejado
-        // de la salida visitando puntos de bloqueo. Si hay mas de dos bloqueadores,
-        // solo se quedan los dos candidatos reales.
+        // Sticky: si ya estoy bloqueando, mantener BlockExit aunque haya exceso; solo ceder si no soy candidato estable
         if (soyBloqueadorActual && hayExcesoBloqueadores && !soyBloqueadorElegido)
             return;
 
@@ -140,6 +150,7 @@ public partial class DesireGenerator
             !soyBloqueadorElegido)
             return;
 
+        // Añadir +1 de prioridad si ya estoy bloqueando para reforzar la continuidad
         float prioridadBloqueo = politica.PrioridadBloqueoSalida;
         if (soyBloqueadorActual)
             prioridadBloqueo += 1f;
@@ -147,10 +158,12 @@ public partial class DesireGenerator
         deseos.Add(new Desire(BehaviorType.BlockExit, prioridadBloqueo));
     }
 
+    // Determinar si este guardia es candidato a roles tácticos excluyendo a los bloqueadores fijos
     private bool SoyCandidatoTacticoAnilloRobado(Vector3 referencia, int maxAgentes)
     {
         HashSet<string> bloqueadores = creencias.ObtenerIdsBloqueadoresSalidaEstables(MAX_BLOQUEADORES_SALIDA);
 
+        // Si este guardia ve a Frodo directamente, puede salir del rol de bloqueador
         if (creencias.LadronVisible && creencias.TieneDeteccionPropiaReciente())
             bloqueadores.Remove(creencias.MiId);
 
@@ -159,6 +172,7 @@ public partial class DesireGenerator
             .Contains(creencias.MiId);
     }
 
+    // Generar deseo de fallback defensivo si no hay ningún otro deseo operativo activo
     private void AgregarFallbackDefensaSalida(List<Desire> deseos, TacticalPhase fase)
     {
         bool tieneDeseoOperativo = deseos.Exists(d => d.Nombre != BehaviorType.Patrol);
@@ -182,6 +196,7 @@ public partial class DesireGenerator
             return;
         }
 
+        // Si no se conoce la posición de la salida, buscar en la última posición del ladrón
         deseos.Add(new Desire(
             BehaviorType.Search,
             DesirePriorities.FallbackDefense,

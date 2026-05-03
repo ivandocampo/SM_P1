@@ -1,14 +1,23 @@
+// =============================================================
+// Cerebro de Frodo: lógica del personaje controlado por el jugador.
+// Coordina input, movimiento, uso del Anillo y comprobación de sensores.
+// Frodo no es un agente del sistema multiagente; su objetivo es recoger
+// el Anillo del pedestal y llevarlo a la salida sin ser capturado por los orcos.
+// Cuando activa el Anillo con Espacio se vuelve invisible a los sensores
+// de visión durante 5 s, con una recarga de 30 s
+// =============================================================
+
 using UnityEngine;
 
 public class CerebroFrodo : MonoBehaviour
 {
-    // Define el estado del personaje para que sea detectable por los enemigos
+    // Estado del personaje, consultado por SensorOido y SensorVision
     public bool estaCorriendo { get; private set; } = false;
     public bool usandoAnillo { get; private set; } = false;
 
     [Header("Magia del Anillo")]
-    public float duracionAnillo = 5f;        
-    public float tiempoRecarga = 30f;        
+    public float duracionAnillo = 5f;
+    public float tiempoRecarga = 30f;
     private float temporizadorUso = 0f;
     private float temporizadorRecarga = 0f;
 
@@ -18,13 +27,13 @@ public class CerebroFrodo : MonoBehaviour
 
     private bool tieneElAnillo = false;
 
-    // Proporciona datos de estado para la interfaz de usuario y sistemas externos
+    // Propiedades de estado para la UI y sistemas externos
     public bool TieneElAnillo => tieneElAnillo;
     public bool AnilloListo => tieneElAnillo && !usandoAnillo && temporizadorRecarga <= 0;
     public float ProgresoUso => usandoAnillo ? temporizadorUso / duracionAnillo : 0f;
     public float ProgresoRecarga => temporizadorRecarga > 0 ? 1f - (temporizadorRecarga / tiempoRecarga) : 1f;
 
-    // Establece las referencias a los actuadores y sensores al iniciar
+    // Obtener referencias a actuadores y sensor táctil
     void Start()
     {
         actuadorMovimiento = GetComponent<ActuadorMovimientoFrodo>();
@@ -32,10 +41,9 @@ public class CerebroFrodo : MonoBehaviour
         sensorTacto = GetComponent<SensorTactoFrodo>();
     }
 
-    // Coordina la actualización constante de la lógica de juego
+    // Ejecutar cada frame: gestionar anillo, leer input y comprobar sensores
     void Update()
     {
-        // Interrumpe la lógica si el estado global de la partida no es activo
         if (!GameManager.Instance.PartidaActiva) return;
 
         ManejarAnillo();
@@ -43,54 +51,48 @@ public class CerebroFrodo : MonoBehaviour
         ComprobarSensores();
     }
 
-    // Procesa las entradas del jugador para el movimiento relativo a la cámara
+    // Leer el input del teclado y mover a Frodo relativo a la orientación de la cámara
     void LeerInput()
     {
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
 
-        // Calcula la orientación basada en la posición actual de la cámara
+        // Calcular adelante y derecha a partir de la cámara actual
         Transform cam = Camera.main.transform;
         Vector3 adelante = cam.forward;
         Vector3 derecha = cam.right;
-        
-        // Aplana los vectores para evitar desplazamientos en el eje vertical
+
+        // Aplanar los vectores para ignorar la inclinación vertical de la cámara
         adelante.y = 0f;
         derecha.y = 0f;
         adelante.Normalize();
         derecha.Normalize();
 
-        // Combina las direcciones para obtener el vector de movimiento final
         Vector3 direccion = (-adelante * v - derecha * h).normalized;
 
-        // Determina si el personaje debe correr basándose en la velocidad y el input
         estaCorriendo = Input.GetKey(KeyCode.LeftShift) && direccion.magnitude > 0.1f;
-        
-        // Envía la dirección final al actuador de movimiento
         actuadorMovimiento.Mover(direccion, estaCorriendo);
     }
 
-    // Administra los estados de invisibilidad y los tiempos de enfriamiento
+    // Gestionar la activación, duración y recarga del poder de invisibilidad
     void ManejarAnillo()
     {
-        // Reduce el tiempo de espera para volver a usar el anillo
+        // Reducir el cooldown mientras el anillo no esté en uso
         if (!usandoAnillo && temporizadorRecarga > 0)
         {
             temporizadorRecarga -= Time.deltaTime;
         }
 
-        // Activa el efecto de invisibilidad si se cumplen los requisitos y se pulsa el comando
+        // Activar invisibilidad al pulsar Espacio si el anillo está disponible
         if (tieneElAnillo && Input.GetKeyDown(KeyCode.Space) && temporizadorRecarga <= 0 && !usandoAnillo)
         {
             usandoAnillo = true;
             temporizadorUso = duracionAnillo;
-            
-            // Notifica al actuador visual que debe aplicar la transparencia
             actuadorInteraccion.CambiarTransparencia(true);
             Debug.Log("¡Anillo activado! Eres invisible.");
         }
 
-        // Gestiona el agotamiento del efecto una vez transcurrido el tiempo de uso
+        // Desactivar la invisibilidad al agotarse el tiempo de uso
         if (usandoAnillo)
         {
             temporizadorUso -= Time.deltaTime;
@@ -98,18 +100,16 @@ public class CerebroFrodo : MonoBehaviour
             {
                 usandoAnillo = false;
                 temporizadorRecarga = tiempoRecarga;
-                
-                // Ordena al actuador restaurar la apariencia normal del personaje
                 actuadorInteraccion.CambiarTransparencia(false);
                 Debug.Log("El efecto del anillo ha terminado. Recargando...");
             }
         }
     }
 
-    // Evalúa la información de los sensores táctiles para interactuar con el entorno
+    // Comprobar sensores táctiles: recoger el Anillo o alcanzar la salida
     void ComprobarSensores()
     {
-        // Comprueba si el personaje ha recolectado el anillo
+        // Recoger el Anillo del pedestal si Frodo está suficientemente cerca
         if (!tieneElAnillo && sensorTacto.TocarAnillo())
         {
             tieneElAnillo = true;
@@ -117,7 +117,7 @@ public class CerebroFrodo : MonoBehaviour
             Debug.Log("¡Anillo recogido!");
         }
 
-        // Verifica si el personaje ha alcanzado la zona de salida con el objetivo cumplido
+        // Notificar la victoria al GameManager cuando Frodo llega a la salida con el Anillo
         if (tieneElAnillo && sensorTacto.TocarSalida())
         {
             GameManager.Instance.FrodoEscapa();

@@ -1,3 +1,10 @@
+// =============================================================
+// Sensor de tacto/proximidad de Frodo.
+// Comprueba si el jugador esta suficientemente cerca del anillo para
+// recogerlo o de la salida para completar la partida. No usa eventos:
+// expone metodos simples que el cerebro de Frodo consulta cuando hace falta
+// =============================================================
+
 using UnityEngine;
 
 public class SensorTactoFrodo : MonoBehaviour

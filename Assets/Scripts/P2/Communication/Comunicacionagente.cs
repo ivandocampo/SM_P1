@@ -1,9 +1,15 @@
+// =============================================================
+// Buzon y capa basica de transporte FIPA-ACL de cada agente.
+// Recibe mensajes, los encola, mantiene historial por ConversationId
+// y despacha cada performativa como evento para que el agente la trate.
+// Tambien centraliza el envio punto a punto, broadcast general y
+// broadcast por tipo usando AgentRegistry
+// =============================================================
+
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-// Buzon de mensajes del agente: recibe, encola y despacha mensajes FIPA-ACL.
-// Cada frame se procesan como maximo maxMensajesPorFrame mensajes para evitar picos de CPU.
 public class ComunicacionAgente : MonoBehaviour
 {
     public string AgentId { get; private set; }
@@ -16,12 +22,12 @@ public class ComunicacionAgente : MonoBehaviour
     private Queue<ACLMessage> buzonEntrada = new Queue<ACLMessage>();
     private int contadorConversaciones = 0;
 
-    // Historial de conversaciones completas.
+    // Historial de conversaciones completas
     private Dictionary<string, List<ACLMessage>> historialConversaciones =
         new Dictionary<string, List<ACLMessage>>();
     private Queue<string> ordenConversaciones = new Queue<string>();
 
-    // Eventos: el cerebro del agente se suscribe a estos.
+    // Eventos: el cerebro del agente se suscribe a estos
     public event Action<ACLMessage> OnInformRecibido;
     public event Action<ACLMessage> OnInformResultRecibido;
     public event Action<ACLMessage> OnRequestRecibido;
@@ -39,6 +45,7 @@ public class ComunicacionAgente : MonoBehaviour
 
     public void Inicializar(string id, string tipo)
     {
+        // Registra el agente una unica vez en el registro global
         if (!string.IsNullOrEmpty(AgentId))
         {
             if (AgentId == id && TipoAgente == tipo)
@@ -59,7 +66,7 @@ public class ComunicacionAgente : MonoBehaviour
         historialConversaciones.Clear();
     }
 
-    // Depositar un mensaje en el buzon (llamado por el remitente).
+    // Depositar un mensaje en el buzon (llamado por el remitente)
     public void RecibirMensaje(ACLMessage mensaje)
     {
         if (buzonEntrada.Count >= maxBuzonSize)
@@ -75,12 +82,14 @@ public class ComunicacionAgente : MonoBehaviour
 
     private void RegistrarEnConversacionSiAplica(ACLMessage mensaje)
     {
+        // Solo los mensajes con ConversationId forman parte de un hilo
         if (!string.IsNullOrEmpty(mensaje.ConversationId))
             RegistrarEnConversacion(mensaje);
     }
 
     private void RegistrarEnConversacion(ACLMessage mensaje)
     {
+        // Guarda el mensaje en el historial y descarta la conversacion mas antigua si se supera el limite
         string convId = mensaje.ConversationId;
 
         if (!historialConversaciones.ContainsKey(convId) &&
@@ -101,6 +110,7 @@ public class ComunicacionAgente : MonoBehaviour
 
     public void LoguearConversacion(string conversationId)
     {
+        // Muestra en consola el resumen de performativas de una conversacion
         if (string.IsNullOrEmpty(conversationId)) return;
         if (!historialConversaciones.TryGetValue(conversationId, out var historial) || historial.Count == 0) return;
 
@@ -111,7 +121,7 @@ public class ComunicacionAgente : MonoBehaviour
         Debug.Log($"[{AgentId}] Conversacion {conversationId} ({historial.Count} msgs): {pasos.ToString().TrimEnd()}");
     }
 
-    // Procesar hasta maxMensajesPorFrame mensajes (llamar desde Update del agente).
+    // Procesar hasta maxMensajesPorFrame mensajes
     public void ProcesarMensajes()
     {
         int procesados = 0;
@@ -124,6 +134,7 @@ public class ComunicacionAgente : MonoBehaviour
 
     private void DespacharMensaje(ACLMessage msg)
     {
+        // Convierte la performativa en un evento de alto nivel para el agente
         switch (msg.Performative)
         {
             case ACLPerformative.INFORM:          OnInformRecibido?.Invoke(msg);     break;
@@ -146,7 +157,7 @@ public class ComunicacionAgente : MonoBehaviour
         }
     }
 
-    // Enviar un mensaje a un destinatario especifico via el registro de agentes.
+    // Enviar un mensaje a un destinatario especifico via el registro de agentes
     public void Enviar(ACLMessage mensaje)
     {
         mensaje.Sender = AgentId;
@@ -164,6 +175,7 @@ public class ComunicacionAgente : MonoBehaviour
 
     public void EnviarATodos(ACLMessage plantilla, List<string> receptores)
     {
+        // Reutiliza una plantilla clonandola para cada destinatario
         foreach (string id in receptores)
             Enviar(plantilla.CloneForReceiver(id));
     }
@@ -174,6 +186,6 @@ public class ComunicacionAgente : MonoBehaviour
     public void BroadcastATipo(ACLMessage plantilla, string tipo)
         => EnviarATodos(plantilla, AgentRegistry.Instance.ObtenerOtrosIdsPorTipo(tipo, AgentId));
 
-    // Genera un identificador unico para una conversacion.
+    // Genera un identificador unico para una conversacion
     public string NuevaConversacion() => $"{AgentId}-conv-{contadorConversaciones++}";
 }

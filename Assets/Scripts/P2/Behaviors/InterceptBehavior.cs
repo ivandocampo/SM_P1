@@ -1,3 +1,10 @@
+// =============================================================
+// Behavior de intercepción: corta la ruta del ladrón hacia su objetivo.
+// Recalcula el punto de corte cada intervaloRecalculo segundos o al llegar.
+// Si la info sobre el ladrón caduca o se supera el tiempo de gracia sin
+// visual, activa BuscarLocalAntesDeCoordinar y cede el turno al ciclo BDI
+// =============================================================
+
 using UnityEngine;
 
 [System.Serializable]
@@ -16,12 +23,14 @@ public class InterceptBehavior : IBehavior
         intervaloRecalculo = intervalo;
     }
 
+    // Forzar recálculo inmediato al iniciar para obtener el punto de corte más fresco
     public void Iniciar(BeliefBase creencias, ActuadorMovimiento actuador)
     {
         ultimoRecalculo = -100f;
         ActualizarDestino(creencias, actuador);
     }
 
+    // Terminar si la info es demasiado antigua o si se supera el tiempo de gracia sin visual
     public bool Ejecutar(BeliefBase creencias, ActuadorMovimiento actuador)
     {
         float ventanaInfo = creencias.AnilloRobado ? 25f : 20f;
@@ -42,6 +51,7 @@ public class InterceptBehavior : IBehavior
         return false;
     }
 
+    // Recalcular el punto de corte; si no es alcanzable por NavMesh, buscar uno alternativo cercano
     private void ActualizarDestino(BeliefBase creencias, ActuadorMovimiento actuador)
     {
         ultimoRecalculo = Time.time;

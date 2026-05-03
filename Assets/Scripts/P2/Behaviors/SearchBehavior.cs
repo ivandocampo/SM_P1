@@ -1,3 +1,12 @@
+// =============================================================
+// Behavior de búsqueda libre tras perder al ladrón de vista.
+// Genera puntos aleatorios alrededor de la última posición conocida,
+// desplazados en la dirección de movimiento si se conoce. Recentra
+// la búsqueda si la posición de referencia se aleja más de 4 m.
+// Tiene un anti-atasco: si el agente no avanza 0.3 m en 2 s, salta al
+// siguiente punto. Termina por tiempo (duracionMaxima) o puntos agotados
+// =============================================================
+
 using UnityEngine;
 
 [System.Serializable]
@@ -13,6 +22,7 @@ public class SearchBehavior : IBehavior
     private float tiempoAtascado = 0f;
     private Vector3 posicionAnterior;
     private Vector3 centroBusquedaActual;
+    // Umbral al cuadrado para detectar desplazamiento relevante del centro de búsqueda
     private const float UMBRAL_RECENTRAR_BUSQUEDA_SQR = 16f;
 
     public SearchBehavior(float radio = 12f, int puntos = 4, float duracion = 10f)
@@ -22,6 +32,7 @@ public class SearchBehavior : IBehavior
         duracionMaxima = duracion;
     }
 
+    // Inicializar temporizadores y generar los primeros puntos de búsqueda
     public void Iniciar(BeliefBase creencias, ActuadorMovimiento actuador)
     {
         tiempoInicio = Time.time;
@@ -31,6 +42,7 @@ public class SearchBehavior : IBehavior
         GenerarPuntosBusqueda(creencias, actuador);
     }
 
+    // Generar puntos aleatorios desplazados en la dirección conocida del ladrón
     private void GenerarPuntosBusqueda(BeliefBase creencias, ActuadorMovimiento actuador)
     {
         Vector3 centro = creencias.UltimaPosicionLadron;
@@ -53,6 +65,7 @@ public class SearchBehavior : IBehavior
             actuador.SetDestino(puntosBusqueda[0], TipoVelocidad.Alerta);
     }
 
+    // Gestionar el avance por los puntos con detección de atasco y recentrado dinámico
     public bool Ejecutar(BeliefBase creencias, ActuadorMovimiento actuador)
     {
         if (puntosBusqueda == null || puntosBusqueda.Length == 0) return true;
@@ -61,6 +74,7 @@ public class SearchBehavior : IBehavior
         if (creencias.TieneDireccionLadron)
             centroDeseado += creencias.UltimaDireccionLadron * (radioBusqueda * 0.5f);
 
+        // Recentrar si la referencia se desplazó significativamente
         if ((centroDeseado - centroBusquedaActual).sqrMagnitude > UMBRAL_RECENTRAR_BUSQUEDA_SQR)
         {
             GenerarPuntosBusqueda(creencias, actuador);

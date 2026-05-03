@@ -1,3 +1,12 @@
+// =============================================================
+// Fichero parcial de DesireGenerator: deseos de búsqueda libre.
+// Genera el deseo Search(98) cuando el guardia venía de un behavior
+// táctico y acaba de perder al ladrón (búsqueda local antes de
+// coordinar con el equipo). Si el anillo ya fue robado, no genera
+// búsqueda libre: la cobertura está repartida mediante Contract-Net
+// y auto-asignación para no romper el esquema de bloqueo de salida
+// =============================================================
+
 using System.Collections.Generic;
 
 public partial class DesireGenerator
@@ -9,10 +18,7 @@ public partial class DesireGenerator
 
         if (creencias.BuscarLocalAntesDeCoordinar && faseContactoTactico)
         {
-            // Si llego informacion fresca (otro guardia ve a Frodo), abandonamos
-            // la busqueda local para que Intercept/Pursuit tomen el relevo.
-            // Solo generamos Search(98) cuando nadie ha visto al ladron en la
-            // ventana de gracia (1.5s).
+            // Si llegó información fresca de otro guardia, ceder el turno a Intercept/Pursuit
             if (creencias.AntiguedadInfoLadron < BeliefBase.TIEMPO_GRACIA_PERDIDA_LADRON)
                 return;
 
@@ -24,10 +30,7 @@ public partial class DesireGenerator
             return;
         }
 
-        // En las fases de busqueda coordinada, la busqueda activa esta cubierta
-        // por SearchAssigned. En Fase 5 no generamos Search libre porque rompe
-        // el reparto 2 BlockExit + 3 zonas Exit_ durante pequenos huecos de
-        // autoasignacion.
+        // Con el anillo robado, la búsqueda está cubierta por SearchAssigned vía Contract-Net
         if (creencias.AnilloRobado)
             return;
 

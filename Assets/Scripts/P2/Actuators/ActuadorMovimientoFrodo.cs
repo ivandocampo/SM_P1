@@ -1,3 +1,10 @@
+// =============================================================
+// Actuador de movimiento de Frodo (personaje controlado por el jugador).
+// Recibe la dirección calculada desde CerebroFrodo y mueve al personaje
+// por el laberinto usando NavMeshAgent. Expone la velocidad actual para
+// que SensorOido pueda determinar si Frodo está caminando o corriendo
+// =============================================================
+
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -9,39 +16,31 @@ public class ActuadorMovimientoFrodo : MonoBehaviour
 
     private NavMeshAgent agent;
 
-    // Inicializa las referencias a los componentes al inicio de la ejecución
+    // Inicializar el NavMeshAgent y activar la rotación automática
     void Start()
     {
-        // Obtiene el componente de navegación NavMeshAgent del objeto
         agent = GetComponent<NavMeshAgent>();
-        
-        // Permite que el sistema de navegación gestione la orientación automática
         agent.updateRotation = true;
     }
 
-    // Gestiona el desplazamiento físico del personaje basado en la dirección recibida
+    // Mover a Frodo en la dirección indicada, a velocidad de caminar o correr
     public void Mover(Vector3 direccion, bool corriendo)
     {
-        // Interrumpe el movimiento si la partida no se encuentra activa en el GameManager
+        // No mover si la partida no está activa
         if (!GameManager.Instance.PartidaActiva) return;
-        
-        // Evita procesar el movimiento si la intensidad del input es insignificante
+        // Ignorar inputs demasiado pequeños
         if (direccion.magnitude < 0.1f) return;
 
-        // Determina la velocidad de desplazamiento según el estado de carrera
         float velocidad = corriendo ? velocidadCorrer : velocidadCaminar;
-        
-        // Aplica el desplazamiento al agente utilizando la dirección y el tiempo transcurrido
         agent.Move(direccion * velocidad * Time.deltaTime);
-        
-        // Orienta el transform del personaje hacia la dirección de movimiento actual
+
+        // Orientar el personaje hacia donde se mueve
         transform.rotation = Quaternion.LookRotation(direccion);
     }
 
-    // Proporciona la magnitud de la velocidad actual para el uso de sensores externos
+    // Devolver la velocidad actual; SensorOido la consulta para saber si Frodo hace ruido
     public float VelocidadActual()
     {
-        // Retorna el valor escalar de la velocidad registrada por el agente de navegación
         return agent.velocity.magnitude;
     }
 }
