@@ -62,7 +62,6 @@ public partial class GuardAgent : MonoBehaviour
 
     // ESTADO INTERNO
 
-    private float temporizadorComprobacion;
     private float temporizadorHeartbeat;
     private float ultimoInformeAvistamiento = -100f;
     private int ultimaVentanaChequeoPedestal = -1;

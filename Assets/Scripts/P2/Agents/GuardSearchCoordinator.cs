@@ -64,7 +64,7 @@ public partial class GuardAgent
                     busquedaCoordinadaPendiente = false;
                     creencias.PendienteBusquedaCoordinadaPorInformeExterno = false;
                 }
-                else if (!contratoLanzado)
+                else
                 {
                     responsableBusquedaCoordinada = "";
                     busquedaCoordinadaPendiente = true;
