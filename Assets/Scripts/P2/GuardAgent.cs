@@ -684,10 +684,12 @@ public class GuardAgent : MonoBehaviour
             behaviorActivo_tipo == BehaviorType.Intercept)
             return;
 
-        if (creencias.ObtenerIdsBloqueadoresSalidaEstables(2).Contains(agentId))
+        bool faltaCoberturaSalida = creencias.GuardiasEnEstado(BehaviorType.BlockExit) < 2;
+        if (faltaCoberturaSalida &&
+            creencias.ObtenerIdsBloqueadoresSalidaEstables(2).Contains(agentId))
             return;
 
-        IntentarAutoAsignacionDeZona();
+        IntentarAutoAsignacionDeZona("", respetarRolBloqueador: faltaCoberturaSalida);
     }
 
     private void InformarAvistamientoSiProcede()
@@ -831,9 +833,10 @@ public class GuardAgent : MonoBehaviour
     // difundido en el heartbeat) y se auto-asigna una. Es self-assignment local
     // basado en información compartida, no Contract-Net — no hay iniciador ni
     // INFORM_DONE asociado al terminar.
-    private void IntentarAutoAsignacionDeZona(string zonaAnterior = "")
+    private void IntentarAutoAsignacionDeZona(string zonaAnterior = "", bool respetarRolBloqueador = true)
     {
-        if (creencias.AnilloRobado &&
+        if (respetarRolBloqueador &&
+            creencias.AnilloRobado &&
             creencias.ObtenerIdsBloqueadoresSalidaEstables(2).Contains(agentId))
             return;
 
@@ -887,10 +890,29 @@ public class GuardAgent : MonoBehaviour
 
     private bool SoyResponsableDeBusquedaCoordinada()
     {
-        if (string.IsNullOrEmpty(responsableBusquedaCoordinada))
+        if (string.IsNullOrEmpty(responsableBusquedaCoordinada) ||
+            !ResponsableBusquedaSigueValido(responsableBusquedaCoordinada))
+        {
             responsableBusquedaCoordinada = CalcularResponsableBusquedaCoordinada();
+        }
 
         return responsableBusquedaCoordinada == agentId;
+    }
+
+    private bool ResponsableBusquedaSigueValido(string responsableId)
+    {
+        if (string.IsNullOrEmpty(responsableId))
+            return false;
+
+        if (responsableId == agentId)
+            return busquedaCoordinadaPendiente;
+
+        ComunicacionAgente comunicacionResponsable = AgentRegistry.Instance.ObtenerAgente(responsableId);
+        if (comunicacionResponsable == null)
+            return false;
+
+        GuardAgent guardiaResponsable = comunicacionResponsable.GetComponent<GuardAgent>();
+        return guardiaResponsable != null && guardiaResponsable.busquedaCoordinadaPendiente;
     }
 
     private string CalcularResponsableBusquedaCoordinada()
