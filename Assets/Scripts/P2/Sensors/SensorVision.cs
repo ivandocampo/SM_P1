@@ -1,158 +1,155 @@
 using UnityEngine;
 using System;
-
-
+ 
 public class SensorVision : MonoBehaviour
 {
     [Header("Configuración de Visión")]
-    public Transform objetivo;                  // Referencia al transform de Frodo
     public float rangoVision = 15f;
-    public float anguloVision = 60f;            // Ángulo desde el frente (total = 2x)
+    public float anguloVision = 60f;
     public LayerMask capasObstaculos;
-
+    public LayerMask capasDetectables;    // capas a escanear con OverlapSphere
+ 
+    [Header("Identificación")]
+    public string tagObjetivo = "Player"; // tag de Frodo en la escena
+ 
     [Header("Altura de los Ojos")]
     public float alturaOjos = 1.5f;
     public float alturaObjetivo = 1.0f;
-
+ 
     [Header("Pedestal del Anillo")]
-    public Transform objetoAnillo;              // Referencia al GameObject del anillo
-
+    public Transform objetoAnillo;
+ 
+    [Header("Rendimiento")]
+    public float intervaloChequeo = 0.1f; // segundos entre escaneos
+ 
     // === EVENTOS ===
-    public event Action<Vector3> OnObjetivoDetectado;   // Transición: no visible → visible
-    public event Action OnObjetivoPerdido;               // Transición: visible → no visible
-    public event Action<Vector3> OnObjetivoVisible;      // Mientras sigue visible
-    public event Action OnAnilloDesaparecido;            // Primera detección de anillo ausente
-
+    public event Action<Vector3> OnObjetivoDetectado;  // no visible → visible
+    public event Action OnObjetivoPerdido;              // visible → no visible
+    public event Action<Vector3> OnObjetivoVisible;    // sigue visible
+    public event Action OnAnilloDesaparecido;           // anillo recogido y pedestal visible
+ 
     // === ESTADO ===
-    /// <summary>Indica si el objetivo es visible en este momento.</summary>
     public bool ObjetivoEsVisible { get; private set; } = false;
-
     public bool ObjetivoVisibleConAnillo { get; private set; } = false;
-
+ 
     private bool eraVisible = false;
     private bool anilloDesaparecidoNotificado = false;
     private Vector3 posicionOriginalAnillo;
     private CerebroFrodo cerebroFrodo;
-
+    private float timerChequeo = 0f;
+ 
     void Start()
     {
-        if (objetivo != null)
-            cerebroFrodo = objetivo.GetComponent<CerebroFrodo>();
-
+        GameObject frodo = GameObject.FindWithTag(tagObjetivo);
+        if (frodo != null)
+            cerebroFrodo = frodo.GetComponent<CerebroFrodo>();
+ 
         if (objetoAnillo != null)
             posicionOriginalAnillo = objetoAnillo.position;
     }
-
+ 
     void Update()
     {
         if (!GameManager.Instance.PartidaActiva) return;
-
-        bool esVisible = ComprobarVisibilidad();
+ 
+        timerChequeo -= Time.deltaTime;
+        if (timerChequeo > 0f) return;
+        timerChequeo = intervaloChequeo;
+ 
+        Transform objetivo = EscanearCono();
+        bool esVisible = objetivo != null;
         ObjetivoEsVisible = esVisible;
-        ObjetivoVisibleConAnillo = esVisible &&
-                                   cerebroFrodo != null &&
-                                   cerebroFrodo.TieneElAnillo &&
-                                   !cerebroFrodo.usandoAnillo;
-
-        // Transición: no visible → visible (primera detección)
+        ObjetivoVisibleConAnillo = esVisible
+            && cerebroFrodo != null
+            && cerebroFrodo.TieneElAnillo
+            && !cerebroFrodo.usandoAnillo;
+ 
         if (esVisible && !eraVisible)
-        {
             OnObjetivoDetectado?.Invoke(objetivo.position);
-        }
-        // Transición: visible → no visible (se perdió de vista)
         else if (!esVisible && eraVisible)
-        {
             OnObjetivoPerdido?.Invoke();
-        }
-        // Se mantiene visible (actualización continua de posición)
         else if (esVisible)
-        {
             OnObjetivoVisible?.Invoke(objetivo.position);
-        }
         else
-        {
             ObjetivoVisibleConAnillo = false;
-        }
-
+ 
         eraVisible = esVisible;
-
-        // Comprobar estado del anillo
+ 
         ComprobarAnillo();
     }
-
-    
-    private bool ComprobarVisibilidad()
+ 
+    // Lanza un OverlapSphere y filtra por cono + LOS. Devuelve el transform del primer
+    // objetivo válido encontrado, o null si no hay ninguno en el cono.
+    private Transform EscanearCono()
     {
-        if (objetivo == null) return false;
-
-        // El ladrón es invisible si está usando el anillo
-        if (cerebroFrodo != null && cerebroFrodo.usandoAnillo)
-            return false;
-
-        Vector3 posOjos = transform.position + Vector3.up * alturaOjos;
-        Vector3 posObjetivo = objetivo.position + Vector3.up * alturaObjetivo;
-
-        // Comprobar distancia
-        float distancia = Vector3.Distance(posOjos, posObjetivo);
-        if (distancia > rangoVision) return false;
-
-        // Comprobar ángulo del campo de visión
-        Vector3 direccion = (posObjetivo - posOjos).normalized;
-        float angulo = Vector3.Angle(transform.forward, direccion);
-        if (angulo > anguloVision) return false;
-
-        // Comprobar línea de visión (obstáculos)
-        if (Physics.Raycast(posOjos, direccion, distancia, capasObstaculos))
-            return false;
-
-        return true;
+        Collider[] candidatos = Physics.OverlapSphere(transform.position, rangoVision, capasDetectables);
+ 
+        foreach (Collider col in candidatos)
+        {
+            if (!col.CompareTag(tagObjetivo)) continue;
+ 
+            if (cerebroFrodo != null && cerebroFrodo.usandoAnillo) continue;
+ 
+            Vector3 posOjos     = transform.position + Vector3.up * alturaOjos;
+            Vector3 posObjetivo = col.transform.position + Vector3.up * alturaObjetivo;
+            Vector3 direccion   = (posObjetivo - posOjos).normalized;
+            float distancia     = Vector3.Distance(posOjos, posObjetivo);
+ 
+            // Ángulo horizontal (proyección XZ para ignorar diferencia de altura)
+            Vector3 dirFlat     = new Vector3(direccion.x, 0f, direccion.z).normalized;
+            Vector3 forwardFlat = new Vector3(transform.forward.x, 0f, transform.forward.z).normalized;
+            if (Vector3.Angle(forwardFlat, dirFlat) > anguloVision) continue;
+ 
+            if (Physics.Raycast(posOjos, direccion, distancia, capasObstaculos)) continue;
+ 
+            return col.transform;
+        }
+ 
+        return null;
     }
-
-    
+ 
     private void ComprobarAnillo()
     {
         if (anilloDesaparecidoNotificado) return;
         if (objetoAnillo == null) return;
         if (objetoAnillo.gameObject.activeSelf) return;
-
-        // El anillo ha sido recogido — comprobar si podemos ver el pedestal vacío
+ 
         float distAlPedestal = Vector3.Distance(transform.position, posicionOriginalAnillo);
         if (distAlPedestal > rangoVision) return;
-
-        Vector3 posOjos = transform.position + Vector3.up * alturaOjos;
+ 
+        Vector3 posOjos     = transform.position + Vector3.up * alturaOjos;
         Vector3 posPedestal = posicionOriginalAnillo + Vector3.up * 0.5f;
-        Vector3 direccion = (posPedestal - posOjos).normalized;
-
-        float angulo = Vector3.Angle(transform.forward, direccion);
-        if (angulo > anguloVision) return;
-
+        Vector3 direccion   = (posPedestal - posOjos).normalized;
+ 
+        Vector3 dirFlat     = new Vector3(direccion.x, 0f, direccion.z).normalized;
+        Vector3 forwardFlat = new Vector3(transform.forward.x, 0f, transform.forward.z).normalized;
+        if (Vector3.Angle(forwardFlat, dirFlat) > anguloVision) return;
+ 
         if (!Physics.Raycast(posOjos, direccion, distAlPedestal, capasObstaculos))
         {
             anilloDesaparecidoNotificado = true;
             OnAnilloDesaparecido?.Invoke();
         }
     }
-
-    
+ 
     public bool AnilloEnPedestal()
     {
         return objetoAnillo != null && objetoAnillo.gameObject.activeSelf;
     }
-
-  
+ 
     void OnDrawGizmos()
     {
         bool viendo = Application.isPlaying && ObjetivoEsVisible;
         Gizmos.color = viendo ? Color.red : Color.green;
-
+ 
         Vector3 posOjos = transform.position + Vector3.up * alturaOjos;
         Gizmos.DrawRay(posOjos, transform.forward * rangoVision);
-
+ 
         Vector3 bordeIzq = Quaternion.Euler(0, -anguloVision, 0) * transform.forward;
-        Vector3 bordeDer = Quaternion.Euler(0, anguloVision, 0) * transform.forward;
+        Vector3 bordeDer = Quaternion.Euler(0,  anguloVision, 0) * transform.forward;
         Gizmos.DrawRay(posOjos, bordeIzq * rangoVision);
         Gizmos.DrawRay(posOjos, bordeDer * rangoVision);
-
+ 
         int segmentos = 20;
         Vector3 puntoAnterior = posOjos + bordeIzq * rangoVision;
         for (int i = 1; i <= segmentos; i++)
