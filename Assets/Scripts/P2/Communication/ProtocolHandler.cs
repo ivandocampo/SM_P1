@@ -233,6 +233,14 @@ public class ProtocolHandler
 
     public void ManejarCFP(ACLMessage msg, ActuadorMovimiento actuador)
     {
+        if (creencias.TieneTareaAsignada ||
+            creencias.EstadoActual == BehaviorType.SearchAssigned ||
+            creencias.EstadoActual == BehaviorType.BlockExit)
+        {
+            RechazarCFP(msg, GameConstants.RefusalReasons.Busy);
+            return;
+        }
+
         if (creencias.DebeComprobarPedestalPrioritario ||
             creencias.EstadoActual == BehaviorType.CheckPedestal)
         {
@@ -274,6 +282,13 @@ public class ProtocolHandler
     {
         if (ContentLanguage.IsSearchTask(msg.Content))
         {
+            if (creencias.TieneTareaAsignada &&
+                msg.ConversationId != creencias.ConversacionTareaAsignada)
+            {
+                Debug.Log($"[{agentId}] ACCEPT_PROPOSAL ignorado: ya tengo zona {creencias.TareaAsignada.ZoneId}");
+                return;
+            }
+
             SearchTask tarea = ContentLanguage.DecodeSearchTask(msg.Content);
             creencias.AsignarTarea(tarea, msg.ConversationId, msg.Sender);
             Debug.Log($"[{agentId}] Tarea adjudicada de {msg.Sender}: zona={tarea.ZoneId}");

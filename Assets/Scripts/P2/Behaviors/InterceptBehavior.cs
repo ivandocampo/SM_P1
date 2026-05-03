@@ -28,15 +28,14 @@ public class InterceptBehavior : IBehavior
         if (!creencias.TieneInfoReciente(ventanaInfo))
             return true;
 
-        bool haLlegado = actuador.HaLlegado(1.2f);
-        if (haLlegado &&
-            !creencias.LadronVisible &&
+        if (!creencias.LadronVisible &&
             creencias.AntiguedadInfoLadron >= BeliefBase.TIEMPO_GRACIA_PERDIDA_LADRON)
         {
             creencias.BuscarLocalAntesDeCoordinar = true;
             return true;
         }
 
+        bool haLlegado = actuador.HaLlegado(1.2f);
         if (Time.time - ultimoRecalculo >= intervaloRecalculo || haLlegado)
             ActualizarDestino(creencias, actuador);
 

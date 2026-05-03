@@ -133,7 +133,11 @@ public class ContractNetManager
     // para no bloquearse por convención de nombres.
     private List<string> SeleccionarZonasParaContratar(int maxZonas)
     {
-        List<string> zonasDisponibles = creencias.ObtenerIdsZonasBusqueda();
+        List<string> zonasDisponibles = creencias.ObtenerIdsZonasBusqueda()
+            .Where(z => !string.IsNullOrWhiteSpace(z))
+            .Select(z => z.Trim())
+            .Distinct(System.StringComparer.OrdinalIgnoreCase)
+            .ToList();
         if (zonasDisponibles.Count == 0) return new List<string>();
 
         IEnumerable<string> candidatas = zonasDisponibles;
@@ -164,6 +168,7 @@ public class ContractNetManager
         // Orden primario: zona más antigua sin barrer (rotación natural).
         // Orden secundario: cercanía al punto de referencia (ladrón o salida).
         return candidatas
+            .Distinct(System.StringComparer.OrdinalIgnoreCase)
             .OrderBy(z => creencias.ObtenerTiempoUltimaBusqueda(z))
             .ThenBy(z => Vector3.Distance(creencias.ObtenerCentroZona(z), referencia))
             .Take(maxZonas)

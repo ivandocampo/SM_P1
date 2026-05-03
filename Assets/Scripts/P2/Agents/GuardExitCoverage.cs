@@ -83,7 +83,7 @@ public partial class GuardAgent
         }
 
         string zonaLibre = creencias.AnilloRobado
-            ? creencias.ObtenerSiguienteZonaExitSecuencial(zonaAnterior)
+            ? creencias.ObtenerSiguienteZonaExitSecuencialSinCubrir(zonaAnterior)
             : creencias.ObtenerZonaSinCubrir(soloExit: false);
         if (string.IsNullOrEmpty(zonaLibre)) return;
 

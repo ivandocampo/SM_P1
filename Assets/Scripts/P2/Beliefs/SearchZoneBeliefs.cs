@@ -14,6 +14,7 @@ public partial class BeliefBase
     public void RegistrarZonaBusqueda(string zoneId, Vector3[] puntos)
     {
         if (string.IsNullOrEmpty(zoneId) || puntos == null || puntos.Length == 0) return;
+        zoneId = zoneId.Trim();
         zonasBusquedaRegistradas[zoneId] = puntos;
     }
 
@@ -111,6 +112,44 @@ public partial class BeliefBase
         }
 
         return ObtenerZonaExitPorRol();
+    }
+
+    public string ObtenerSiguienteZonaExitSecuencialSinCubrir(string zonaActual)
+    {
+        List<string> zonasExit = ObtenerZonasExitOrdenadas();
+        if (zonasExit.Count == 0)
+            return "";
+
+        if (string.IsNullOrEmpty(zonaActual))
+            return ObtenerZonaExitPorRol();
+
+        HashSet<string> cubiertas = ObtenerZonasCubiertasPorOtros();
+        string siguiente = ObtenerSiguienteZonaDesdeLista(zonasExit, zonaActual, cubiertas);
+        if (!string.IsNullOrEmpty(siguiente))
+            return siguiente;
+
+        return ObtenerSiguienteZonaExitSecuencial(zonaActual);
+    }
+
+    private string ObtenerSiguienteZonaDesdeLista(List<string> zonasExit, string zonaActual, HashSet<string> excluir)
+    {
+        int inicio = 0;
+        if (!string.IsNullOrEmpty(zonaActual))
+        {
+            int indiceActual = zonasExit.FindIndex(z =>
+                string.Equals(z, zonaActual, StringComparison.OrdinalIgnoreCase));
+            if (indiceActual >= 0)
+                inicio = (indiceActual + 1) % zonasExit.Count;
+        }
+
+        for (int offset = 0; offset < zonasExit.Count; offset++)
+        {
+            string candidata = zonasExit[(inicio + offset) % zonasExit.Count];
+            if (!excluir.Contains(candidata))
+                return candidata;
+        }
+
+        return "";
     }
 
     private string ObtenerZonaExitPorRol()
