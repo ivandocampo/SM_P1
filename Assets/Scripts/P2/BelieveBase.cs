@@ -156,6 +156,8 @@ public class BeliefBase
     /// <summary>ID del agente que nos asignó la tarea.</summary>
     public string AsignadorTarea { get; private set; } = "";
 
+    public int VersionTareaAsignada { get; private set; } = 0;
+
     // REQUEST PENDIENTES
 
     /// <summary>Solicitud de acción recibida vía REQUEST que aceptamos.</summary>
@@ -503,6 +505,7 @@ public class BeliefBase
         TareaAsignada = tarea;
         ConversacionTareaAsignada = conversacionId;
         AsignadorTarea = asignador;
+        VersionTareaAsignada++;
         NecesitaDeliberar = true; // SearchAssigned(85) entra en juego
     }
 
@@ -663,6 +666,66 @@ public class BeliefBase
         }
 
         return mejores < maxAgentes;
+    }
+
+    public List<string> ObtenerIdsMasCercanosA(Vector3 posicion, int maxAgentes, HashSet<string> excluir = null)
+    {
+        List<KeyValuePair<string, float>> candidatos = new List<KeyValuePair<string, float>>();
+
+        if (excluir == null || !excluir.Contains(MiId))
+            candidatos.Add(new KeyValuePair<string, float>(MiId, Vector3.Distance(MiPosicion, posicion)));
+
+        foreach (var par in EstadosOtrosGuardias)
+        {
+            if (excluir != null && excluir.Contains(par.Key)) continue;
+            if (par.Value.CurrentPosition == null) continue;
+
+            float distancia = Vector3.Distance(par.Value.CurrentPosition.ToVector3(), posicion);
+            candidatos.Add(new KeyValuePair<string, float>(par.Key, distancia));
+        }
+
+        return candidatos
+            .OrderBy(c => c.Value)
+            .ThenBy(c => c.Key, StringComparer.Ordinal)
+            .Take(maxAgentes)
+            .Select(c => c.Key)
+            .ToList();
+    }
+
+    public HashSet<string> ObtenerIdsBloqueadoresSalida(int maxAgentes)
+    {
+        if (!TienePosicionSalida)
+            return new HashSet<string>();
+
+        HashSet<string> excluir = new HashSet<string>();
+        if (EstadoActual == BehaviorType.Pursuit)
+            excluir.Add(MiId);
+
+        foreach (var par in EstadosOtrosGuardias)
+        {
+            if (par.Value.CurrentState == BehaviorType.Pursuit.ToString())
+                excluir.Add(par.Key);
+        }
+
+        return new HashSet<string>(ObtenerIdsMasCercanosA(PosicionSalida, maxAgentes, excluir));
+    }
+
+    public bool SoyEntreMasCercanosParaBloquearSalida(int maxAgentes, bool excluirmeSiTengoContactoDirecto)
+    {
+        if (!TienePosicionSalida)
+            return false;
+
+        HashSet<string> excluir = new HashSet<string>();
+        if (excluirmeSiTengoContactoDirecto)
+            excluir.Add(MiId);
+
+        foreach (var par in EstadosOtrosGuardias)
+        {
+            if (par.Value.CurrentState == BehaviorType.Pursuit.ToString())
+                excluir.Add(par.Key);
+        }
+
+        return ObtenerIdsMasCercanosA(PosicionSalida, maxAgentes, excluir).Contains(MiId);
     }
 
 }

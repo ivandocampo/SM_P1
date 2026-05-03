@@ -33,7 +33,8 @@ public class DesireGenerator
 {
     private BeliefBase creencias;
     private const int MAX_TACTICOS_ANILLO_SEGURO = 4;
-    private const int MAX_TACTICOS_ANILLO_ROBADO = 5;
+    private const int MAX_TACTICOS_ANILLO_ROBADO = 3;
+    private const int MAX_BLOQUEADORES_SALIDA = 2;
 
     public DesireGenerator(BeliefBase creencias)
     {
@@ -51,8 +52,7 @@ public class DesireGenerator
         AgregarTareaAsignada(deseos);
 
         if (creencias.TieneTareaAsignada &&
-            (fase == TacticalPhase.RingSafeThiefLost ||
-             fase == TacticalPhase.RingStolenThiefLost))
+            fase == TacticalPhase.RingSafeThiefLost)
         {
             deseos.Add(new Desire(BehaviorType.Patrol, 10f));
             return deseos;
@@ -96,6 +96,12 @@ public class DesireGenerator
             deseos.Add(new Desire(BehaviorType.CheckPedestal, 35f));
         }
 
+        if (creencias.AnilloRobado)
+        {
+            AgregarFallbackDefensaSalida(deseos, fase);
+            return deseos;
+        }
+
         deseos.Add(new Desire(BehaviorType.Patrol, 10f));
         return deseos;
     }
@@ -123,8 +129,15 @@ public class DesireGenerator
             ? MAX_TACTICOS_ANILLO_ROBADO
             : MAX_TACTICOS_ANILLO_SEGURO;
 
-        if (!creencias.SoyEntreMasCercanosA(creencias.UltimaPosicionLadron, maxPerseguidores))
+        if (creencias.AnilloRobado)
+        {
+            if (!SoyCandidatoTacticoAnilloRobado(creencias.UltimaPosicionLadron, maxPerseguidores))
+                return;
+        }
+        else if (!creencias.SoyEntreMasCercanosA(creencias.UltimaPosicionLadron, maxPerseguidores))
+        {
             return;
+        }
 
         deseos.Add(new Desire(
             BehaviorType.Pursuit,
@@ -231,8 +244,15 @@ public class DesireGenerator
             : maxInterceptores;
 
         bool soyInterceptorActual = creencias.EstadoActual == BehaviorType.Intercept;
-        if (!creencias.SoyEntreMasCercanosA(referenciaSeleccion, maxCandidatos))
+        if (creencias.AnilloRobado)
+        {
+            if (!SoyCandidatoTacticoAnilloRobado(referenciaSeleccion, maxCandidatos))
+                return;
+        }
+        else if (!creencias.SoyEntreMasCercanosA(referenciaSeleccion, maxCandidatos))
+        {
             return;
+        }
 
         if (faseConLadronLocalizado &&
             !soyInterceptorActual &&
@@ -321,15 +341,54 @@ public class DesireGenerator
     private void AgregarBloqueoSalidaSiProcede(List<Desire> deseos, TacticalPhase fase)
     {
         if (!creencias.AnilloRobado) return;
+        if (!creencias.TienePosicionSalida) return;
 
-        const int MAX_BLOQUEADORES = 2;
-        bool soyBloqueadorActual = creencias.EstadoActual == BehaviorType.BlockExit;
-        if (!soyBloqueadorActual &&
-            creencias.GuardiasEnEstado(BehaviorType.BlockExit) >= MAX_BLOQUEADORES)
+        bool contactoDirectoPropio = creencias.LadronVisible && creencias.TieneDeteccionPropiaReciente();
+        if (!creencias.SoyEntreMasCercanosParaBloquearSalida(MAX_BLOQUEADORES_SALIDA, contactoDirectoPropio))
             return;
 
-        float prioridadBloqueo = fase == TacticalPhase.RingStolenThiefKnown ? 94f : 96f;
+        bool soyBloqueadorActual = creencias.EstadoActual == BehaviorType.BlockExit;
+
+        float prioridadBloqueo = fase == TacticalPhase.RingStolenThiefKnown ? 98f : 99f;
+        if (soyBloqueadorActual)
+            prioridadBloqueo += 1f;
+
         deseos.Add(new Desire(BehaviorType.BlockExit, prioridadBloqueo));
+    }
+
+    private bool SoyCandidatoTacticoAnilloRobado(Vector3 referencia, int maxAgentes)
+    {
+        HashSet<string> bloqueadores = creencias.ObtenerIdsBloqueadoresSalida(MAX_BLOQUEADORES_SALIDA);
+
+        if (creencias.LadronVisible && creencias.TieneDeteccionPropiaReciente())
+            bloqueadores.Remove(creencias.MiId);
+
+        return creencias
+            .ObtenerIdsMasCercanosA(referencia, maxAgentes, bloqueadores)
+            .Contains(creencias.MiId);
+    }
+
+    private void AgregarFallbackDefensaSalida(List<Desire> deseos, TacticalPhase fase)
+    {
+        bool tieneDeseoOperativo = deseos.Exists(d => d.Nombre != BehaviorType.Patrol);
+        if (tieneDeseoOperativo)
+            return;
+
+        if (creencias.TienePosicionSalida)
+        {
+            deseos.Add(new Desire(
+                BehaviorType.BlockExit,
+                30f,
+                creencias.PosicionSalida
+            ));
+            return;
+        }
+
+        deseos.Add(new Desire(
+            BehaviorType.Search,
+            30f,
+            creencias.UltimaPosicionLadron
+        ));
     }
 
     private float PrioridadPorCercania(float basePrioridad, Vector3 objetivo, float penalizacionPorMetro)

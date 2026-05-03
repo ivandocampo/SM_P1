@@ -83,11 +83,14 @@ public class GuardAgent : MonoBehaviour
     private const float INTERVALO_DELIBERACION = 0.5f;
     private bool busquedaCoordinadaPendiente = false;
     private float tiempoPerdidaLadron = -100f;
+    private int versionTareaProcesada = 0;
     private const float RETARDO_BUSQUEDA_COORDINADA = BeliefBase.TIEMPO_INFO_TACTICA_LADRON;
     private static float ultimaRondaBusquedaCoordinada = -100f;
     private static Vector3 ultimaPosicionRondaBusqueda = Vector3.positiveInfinity;
     private static string responsableBusquedaCoordinada = "";
     private const float DISTANCIA_MISMA_RONDA_BUSQUEDA = 2f;
+    private float tiempoInicioCoberturaSalidaInsuficiente = -100f;
+    private const float RETARDO_RELLENO_BLOQUEO_SALIDA = 2.5f;
     private static GUIStyle estiloDebugPanel;
     private static GUIStyle estiloDebugTitulo;
     private static List<GuardAgent> guardiasDebug = new List<GuardAgent>();
@@ -226,8 +229,10 @@ public class GuardAgent : MonoBehaviour
 
         // Percepción y comunicación: cada frame para reaccionar sin latencia
         comunicacion.ProcesarMensajes();
+        GestionarCambioTareaAsignada();
         GestionarComunicacionReactiva();
         GestionarCaducidadHipotesisLadron();
+        GestionarCoberturaSalidaRobada();
 
         // Mantenimiento periódico
         ActualizarTemporizadorComprobacion();
@@ -589,6 +594,62 @@ public class GuardAgent : MonoBehaviour
         Debug.Log($"[{agentId}] Hipotesis del ladron caducada; vuelta a patrulla");
     }
 
+    private void GestionarCambioTareaAsignada()
+    {
+        if (creencias.VersionTareaAsignada == versionTareaProcesada)
+            return;
+
+        versionTareaProcesada = creencias.VersionTareaAsignada;
+        if (!creencias.TieneTareaAsignada)
+            return;
+
+        bool puedeInterrumpir =
+            behaviorActivo_tipo == BehaviorType.Search ||
+            behaviorActivo_tipo == BehaviorType.SearchAssigned ||
+            behaviorActivo_tipo == BehaviorType.Patrol ||
+            behaviorActivo_tipo == BehaviorType.None;
+
+        if (!puedeInterrumpir)
+            return;
+
+        selectorIntenciones.ForzarReset();
+        deliberacionPendiente = true;
+    }
+
+    private void GestionarCoberturaSalidaRobada()
+    {
+        if (!creencias.AnilloRobado || !creencias.TienePosicionSalida)
+        {
+            tiempoInicioCoberturaSalidaInsuficiente = -100f;
+            return;
+        }
+
+        if (creencias.GuardiasEnEstado(BehaviorType.BlockExit) >= 2)
+        {
+            tiempoInicioCoberturaSalidaInsuficiente = -100f;
+            return;
+        }
+
+        if (tiempoInicioCoberturaSalidaInsuficiente < 0f)
+        {
+            tiempoInicioCoberturaSalidaInsuficiente = Time.time;
+            return;
+        }
+
+        if (Time.time - tiempoInicioCoberturaSalidaInsuficiente < RETARDO_RELLENO_BLOQUEO_SALIDA)
+            return;
+
+        if (behaviorActivo_tipo == BehaviorType.BlockExit ||
+            !creencias.SoyEntreMasCercanosParaBloquearSalida(2, false))
+            return;
+
+        selectorIntenciones.ForzarReset();
+        creencias.NecesitaDeliberar = true;
+        deliberacionPendiente = true;
+        tiempoInicioCoberturaSalidaInsuficiente = Time.time;
+        Debug.Log($"[{agentId}] Cobertura de salida insuficiente; forzando relevo a BlockExit");
+    }
+
     private void InformarAvistamientoSiProcede()
     {
         bool forzar = creencias.PrimerAvistamiento;
@@ -615,6 +676,9 @@ public class GuardAgent : MonoBehaviour
     {
         if (behaviorActivo != null)
             behaviorActivo.Detener(actuador);
+
+        if (tipo == BehaviorType.BlockExit && creencias.AnilloRobado && creencias.TieneTareaAsignada)
+            creencias.LimpiarTarea();
 
         if (behaviors.TryGetValue(tipo, out IBehavior nuevoBehavior))
         {
@@ -681,6 +745,12 @@ public class GuardAgent : MonoBehaviour
 
                 protocolHandler.InformarPredicado(PredicateType.ZONE_CLEAR);
                 creencias.LimpiarTarea();
+
+                if (creencias.AnilloRobado &&
+                    !creencias.SoyEntreMasCercanosParaBloquearSalida(2, false))
+                {
+                    IntentarAutoAsignacionDeZona();
+                }
             }
 
             if (creencias.TieneRequestPendiente)
@@ -722,6 +792,10 @@ public class GuardAgent : MonoBehaviour
     // INFORM_DONE asociado al terminar.
     private void IntentarAutoAsignacionDeZona()
     {
+        if (creencias.AnilloRobado &&
+            creencias.SoyEntreMasCercanosParaBloquearSalida(2, false))
+            return;
+
         if (!creencias.AnilloRobado &&
             creencias.FaseActual() == TacticalPhase.RingSafeThiefLost)
             return;

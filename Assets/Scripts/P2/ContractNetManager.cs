@@ -54,7 +54,14 @@ public class ContractNetManager
         List<string> participantes = AgentRegistry.Instance
             .ObtenerIdsPorTipo("guard");
         if (!creencias.AnilloRobado)
+        {
             participantes.Remove(agentId);
+        }
+        else
+        {
+            HashSet<string> bloqueadoresSalida = creencias.ObtenerIdsBloqueadoresSalida(2);
+            participantes.RemoveAll(id => bloqueadoresSalida.Contains(id));
+        }
 
         if (participantes.Count == 0) return false;
 
