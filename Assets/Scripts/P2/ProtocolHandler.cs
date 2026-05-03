@@ -109,6 +109,8 @@ public class ProtocolHandler
                     creencias.BuscarLocalAntesDeCoordinar = false;
                     creencias.ComprobarPedestalTrasBusquedaLocal = false;
                     creencias.DebeComprobarPedestalPrioritario = false;
+                    if (avistamiento.ReportedBy != agentId)
+                        creencias.PendienteBusquedaCoordinadaPorInformeExterno = true;
                     creencias.NecesitaDeliberar = true;
                 }
                 if (LogsDetallados)

@@ -113,6 +113,8 @@ public class BeliefBase
     /// <summary>Se ha visto al ladrón portando el anillo — comunicar RING_STOLEN con contexto adicional.</summary>
     public bool PendienteComunicarLadronConAnillo { get; set; } = false;
 
+    public bool PendienteBusquedaCoordinadaPorInformeExterno { get; set; } = false;
+
     /// <summary>Primera detección del ladrón en este ciclo — forzar avistamiento inmediato sin throttle.</summary>
     public bool PrimerAvistamiento { get; set; } = false;
 
@@ -229,6 +231,7 @@ public class BeliefBase
         UltimoChequeoPedestal = Time.time;
         DebeComprobarPedestal = false;
         DebeComprobarPedestalPrioritario = false;
+        PendienteBusquedaCoordinadaPorInformeExterno = false;
     }
 
 

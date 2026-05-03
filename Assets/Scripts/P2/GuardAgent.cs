@@ -422,6 +422,7 @@ public class GuardAgent : MonoBehaviour
         creencias.LimpiarRequest();
         creencias.PrimerAvistamiento = true;
         busquedaCoordinadaPendiente = false;
+        creencias.PendienteBusquedaCoordinadaPorInformeExterno = false;
         creencias.BuscarLocalAntesDeCoordinar = false;
         creencias.ComprobarPedestalTrasBusquedaLocal = false;
         creencias.DebeComprobarPedestalPrioritario = false;
@@ -437,6 +438,7 @@ public class GuardAgent : MonoBehaviour
         creencias.LimpiarTarea();
         creencias.LimpiarRequest();
         busquedaCoordinadaPendiente = false;
+        creencias.PendienteBusquedaCoordinadaPorInformeExterno = false;
         creencias.BuscarLocalAntesDeCoordinar = false;
         creencias.ComprobarPedestalTrasBusquedaLocal = false;
         creencias.DebeComprobarPedestalPrioritario = false;
@@ -515,6 +517,17 @@ public class GuardAgent : MonoBehaviour
         TacticalPhase fase = creencias.FaseActual();
         bool faseContactoTactico = fase == TacticalPhase.RingSafeThiefKnown ||
                                    fase == TacticalPhase.RingStolenThiefKnown;
+
+        if (!busquedaCoordinadaPendiente &&
+            creencias.PendienteBusquedaCoordinadaPorInformeExterno &&
+            (fase == TacticalPhase.RingSafeThiefLost ||
+             fase == TacticalPhase.RingStolenThiefLost))
+        {
+            busquedaCoordinadaPendiente = true;
+            tiempoPerdidaLadron = creencias.TiempoUltimaDeteccion + BeliefBase.TIEMPO_INFO_TACTICA_LADRON;
+            creencias.BuscarLocalAntesDeCoordinar = false;
+        }
+
         if (busquedaCoordinadaPendiente &&
             faseContactoTactico &&
             !creencias.BuscarLocalAntesDeCoordinar &&
@@ -561,6 +574,7 @@ public class GuardAgent : MonoBehaviour
             }
 
             busquedaCoordinadaPendiente = false;
+            creencias.PendienteBusquedaCoordinadaPorInformeExterno = false;
         }
 
         // Anillo desaparecido del pedestal — alertar al equipo

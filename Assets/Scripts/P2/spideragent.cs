@@ -130,6 +130,16 @@ public class SpiderAgent : MonoBehaviour
         msg.Protocol = "fipa-inform";
         comunicacion.Broadcast(msg);
 
+        if (visionDirecta &&
+            sensorVision != null &&
+            sensorVision.ObjetivoVisibleConAnillo &&
+            !anilloReportado)
+        {
+            anilloReportado = true;
+            BroadcastPredicado(PredicateType.RING_STOLEN);
+            Debug.Log($"[{agentId}] Ladron visto con el anillo - informando a guardias");
+        }
+
         string tipo = visionDirecta ? "VISTO" : "OÍDO";
         Debug.Log($"[{agentId}] Ladrón {tipo} en {posicion} — informando a guardias");
     }
