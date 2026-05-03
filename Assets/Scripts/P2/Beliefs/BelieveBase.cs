@@ -93,8 +93,7 @@ public partial class BeliefBase
 
     public bool DebeComprobarPedestal { get; set; } = false;
     public bool DebeComprobarPedestalPrioritario { get; set; } = false;
-    public bool DebeBuscarAlrededorPedestal { get; set; } = false;
-    public bool BuscarLocalAntesDeCoordinar { get; set; } = false;
+public bool BuscarLocalAntesDeCoordinar { get; set; } = false;
     public bool ComprobarPedestalTrasBusquedaLocal { get; set; } = false;
     public float UltimoChequeoPedestal { get; private set; } = -100f;
 
@@ -249,7 +248,6 @@ public partial class BeliefBase
         TieneDireccionLadron = false;
         BuscarLocalAntesDeCoordinar = false;
         ComprobarPedestalTrasBusquedaLocal = false;
-        DebeBuscarAlrededorPedestal = false;
         DebeComprobarPedestalPrioritario = false;
         LimpiarTarea();
         LimpiarRequest();

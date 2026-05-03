@@ -54,7 +54,6 @@ public partial class GuardAgent
     private void OnAnilloDesaparecido()
     {
         creencias.MarcarAnilloRobado(); // activa NecesitaDeliberar internamente
-        creencias.DebeBuscarAlrededorPedestal = false;
         creencias.DebeComprobarPedestal = false;
         creencias.DebeComprobarPedestalPrioritario = false;
         creencias.PendienteComunicarAnilloDesaparecido = true;

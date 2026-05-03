@@ -301,6 +301,7 @@ public class ProtocolHandler
 
             creencias.AsignarTarea(tarea, msg.ConversationId, msg.Sender);
             Debug.Log($"[{agentId}] Tarea adjudicada de {msg.Sender}: zona={tarea.ZoneId}");
+            comunicacion.LoguearConversacion(msg.ConversationId);
         }
     }
 
@@ -315,6 +316,7 @@ public class ProtocolHandler
     {
         creencias.ActualizarDisponibilidadGuardia(msg.Sender, true, BehaviorType.Patrol.ToString());
         Debug.Log($"[{agentId}] Tarea completada confirmada por {msg.Sender}");
+        comunicacion.LoguearConversacion(msg.ConversationId);
     }
 
     public void ManejarAgree(ACLMessage msg)

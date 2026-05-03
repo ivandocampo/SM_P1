@@ -23,10 +23,6 @@ public class SensorOido : MonoBehaviour
     // === EVENTOS ===
     public event Action<Vector3> OnSonidoDetectado;
 
-    // === ESTADO ===
-    /// <summary>Indica si se está detectando sonido en este momento.</summary>
-    public bool OyendoAlgo { get; private set; } = false;
-
     private CerebroFrodo cerebroFrodo;
     private ActuadorMovimientoFrodo movimientoFrodo;
     private float ultimaNotificacion = 0f;
@@ -46,7 +42,6 @@ public class SensorOido : MonoBehaviour
         if (objetivo == null || cerebroFrodo == null || movimientoFrodo == null) return;
 
         bool oido = ComprobarAudicion();
-        OyendoAlgo = oido;
 
         // Notificar con throttle para evitar eventos excesivos
         if (oido && Time.time - ultimaNotificacion >= intervaloNotificacion)

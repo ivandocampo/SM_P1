@@ -62,27 +62,6 @@ public partial class BeliefBase
         }
     }
 
-    public bool AlguienPersiguiendo()
-    {
-        foreach (var par in EstadosOtrosGuardias)
-        {
-            if (par.Value.CurrentState == BehaviorType.Pursuit.ToString())
-                return true;
-        }
-        return false;
-    }
-
-    public int GuardiasPersiguiendo()
-    {
-        int count = 0;
-        foreach (var par in EstadosOtrosGuardias)
-        {
-            if (par.Value.CurrentState == BehaviorType.Pursuit.ToString())
-                count++;
-        }
-        return count;
-    }
-
     public int GuardiasEnEstado(BehaviorType estado)
     {
         int count = EstadoActual == estado ? 1 : 0;

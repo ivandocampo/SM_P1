@@ -12,15 +12,11 @@ public class ActuadorMovimiento : MonoBehaviour
 
     private NavMeshAgent agent;
 
-    public float VelocidadActual => agent != null ? agent.velocity.magnitude : 0f;
-
     public bool HaLlegado(float margen = 1.0f)
     {
         if (agent == null) return true;
         return !agent.pathPending && agent.remainingDistance < margen;
     }
-
-    public float DistanciaRestante => agent != null ? agent.remainingDistance : 0f;
 
     void Start()
     {

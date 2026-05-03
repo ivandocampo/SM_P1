@@ -28,8 +28,6 @@ public class ComunicacionAgente : MonoBehaviour
     public event Action<ACLMessage> OnAgreeRecibido;
     public event Action<ACLMessage> OnRefuseRecibido;
     public event Action<ACLMessage> OnDoneRecibido;
-    public event Action<ACLMessage> OnFailureRecibido;
-    public event Action<ACLMessage> OnQueryRecibido;
     public event Action<ACLMessage> OnQueryIfRecibido;
     public event Action<ACLMessage> OnQueryRefRecibido;
     public event Action<ACLMessage> OnCFPRecibido;
@@ -101,22 +99,16 @@ public class ComunicacionAgente : MonoBehaviour
         historialConversaciones[convId].Add(mensaje);
     }
 
-    // Obtener historial completo de una conversacion.
-    public List<ACLMessage> ObtenerHistorialConversacion(string conversationId)
+    public void LoguearConversacion(string conversationId)
     {
-        if (historialConversaciones.TryGetValue(conversationId, out var historial))
-            return new List<ACLMessage>(historial);
-        return new List<ACLMessage>();
-    }
+        if (string.IsNullOrEmpty(conversationId)) return;
+        if (!historialConversaciones.TryGetValue(conversationId, out var historial) || historial.Count == 0) return;
 
-    public List<string> ObtenerConversacionesActivas()
-    {
-        return new List<string>(historialConversaciones.Keys);
-    }
+        var pasos = new System.Text.StringBuilder();
+        foreach (ACLMessage msg in historial)
+            pasos.Append($"{msg.Sender}:{msg.Performative} ");
 
-    public bool TieneConversacion(string conversationId)
-    {
-        return historialConversaciones.ContainsKey(conversationId);
+        Debug.Log($"[{AgentId}] Conversacion {conversationId} ({historial.Count} msgs): {pasos.ToString().TrimEnd()}");
     }
 
     // Procesar hasta maxMensajesPorFrame mensajes (llamar desde Update del agente).
@@ -140,9 +132,8 @@ public class ComunicacionAgente : MonoBehaviour
             case ACLPerformative.REQUEST:         OnRequestRecibido?.Invoke(msg);    break;
             case ACLPerformative.AGREE:           OnAgreeRecibido?.Invoke(msg);      break;
             case ACLPerformative.REFUSE:          OnRefuseRecibido?.Invoke(msg);     break;
-            case ACLPerformative.FAILURE:         OnFailureRecibido?.Invoke(msg);    break;
-            case ACLPerformative.QUERY_IF:        OnQueryIfRecibido?.Invoke(msg); OnQueryRecibido?.Invoke(msg); break;
-            case ACLPerformative.QUERY_REF:       OnQueryRefRecibido?.Invoke(msg); OnQueryRecibido?.Invoke(msg); break;
+            case ACLPerformative.QUERY_IF:        OnQueryIfRecibido?.Invoke(msg); break;
+            case ACLPerformative.QUERY_REF:       OnQueryRefRecibido?.Invoke(msg); break;
             case ACLPerformative.CFP:             OnCFPRecibido?.Invoke(msg);        break;
             case ACLPerformative.PROPOSE:         OnPropuestaRecibida?.Invoke(msg);  break;
             case ACLPerformative.ACCEPT_PROPOSAL: OnPropuestaAceptada?.Invoke(msg);  break;
